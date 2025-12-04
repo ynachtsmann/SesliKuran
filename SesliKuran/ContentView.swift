@@ -8,6 +8,7 @@ struct ContentView: View {
     @StateObject private var audioManager = AudioManager()
     @StateObject private var themeManager = ThemeManager()
     @State private var showSlotSelection = false
+    @State private var showSleepTimerMenu = false
     @State private var scrollOffset: CGFloat = 0
     
     // MARK: - Body
@@ -16,11 +17,7 @@ struct ContentView: View {
             ZStack(alignment: .topLeading) {
                 // Hintergrundfarbe
                 Group {
-                    if themeManager.isDarkMode {
-                        Color.black.opacity(0.9)
-                    } else {
-                        Color.white
-                    }
+                    Color(UIColor.systemBackground)
                 }
                 .edgesIgnoringSafeArea(.all)
                 
@@ -34,32 +31,6 @@ struct ContentView: View {
                 }
                 .padding()
                 
-                // Audio List mit Animation vom Button
-                if showSlotSelection {
-                    GeometryReader { _ in
-                        VStack {
-                            AudioListView(isShowing: $showSlotSelection) { selectedTrack in
-                                audioManager.selectedTrack = selectedTrack
-                                audioManager.loadAudio(track: selectedTrack)
-                                withAnimation(.easeInOut(duration: 0.3)) {
-                                    showSlotSelection = false
-                                }
-                            }
-                            .environmentObject(audioManager)  // Diese Zeile hinzufügen
-                            .environmentObject(themeManager)
-                        }
-                        .frame(width: UIScreen.main.bounds.width * 0.8)
-                        .background(themeManager.isDarkMode ? Color.black : Color.white)
-                        .cornerRadius(15)
-                        .shadow(radius: 10)
-                        .offset(y: 60)
-                        .transition(.asymmetric(
-                            insertion: .scale(scale: 0.1, anchor: .topLeading).combined(with: .opacity),
-                            removal: .scale(scale: 0.1, anchor: .topLeading).combined(with: .opacity)
-                        ))
-                    }
-                }
-                
                 // Loading Overlay
                 if audioManager.isLoading {
                     LoadingView()
@@ -69,6 +40,34 @@ struct ContentView: View {
             }
             .navigationBarHidden(true)
             .preferredColorScheme(themeManager.isDarkMode ? .dark : .light)
+            .sheet(isPresented: $showSlotSelection) {
+                if #available(iOS 16.0, *) {
+                    AudioListView(isShowing: $showSlotSelection) { selectedTrack in
+                        audioManager.selectedTrack = selectedTrack
+                        audioManager.loadAudio(track: selectedTrack)
+                        showSlotSelection = false
+                    }
+                    .environmentObject(audioManager)
+                    .environmentObject(themeManager)
+                    .presentationDetents([.medium, .large])
+                } else {
+                    AudioListView(isShowing: $showSlotSelection) { selectedTrack in
+                        audioManager.selectedTrack = selectedTrack
+                        audioManager.loadAudio(track: selectedTrack)
+                        showSlotSelection = false
+                    }
+                    .environmentObject(audioManager)
+                    .environmentObject(themeManager)
+                }
+            }
+            .alert(isPresented: Binding<Bool>(
+                get: { audioManager.errorMessage != nil },
+                set: { if !$0 { audioManager.errorMessage = nil } }
+            )) {
+                Alert(title: Text("Fehler"),
+                      message: Text(audioManager.errorMessage ?? "Unbekannter Fehler"),
+                      dismissButton: .default(Text("OK")))
+            }
         }
     }
     
@@ -76,9 +75,7 @@ struct ContentView: View {
     private var headerSection: some View {
         HStack {
             Button(action: {
-                withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
-                    showSlotSelection.toggle()
-                }
+                showSlotSelection.toggle()
             }) {
                 Image(systemName: "music.note.list")
                     .font(.title2)
@@ -92,6 +89,37 @@ struct ContentView: View {
             
             Spacer()
             
+            // Sleep Timer
+            Button(action: {
+                showSleepTimerMenu = true
+            }) {
+                HStack(spacing: 4) {
+                    Image(systemName: "timer")
+                        .font(.title2)
+                    if let remaining = audioManager.sleepTimerTimeRemaining {
+                        Text(timeString(time: remaining))
+                            .font(.caption)
+                            .monospacedDigit()
+                    }
+                }
+                .foregroundColor(themeManager.isDarkMode ? .white : .blue)
+                .padding(10)
+                .background(
+                    themeManager.isDarkMode ? Color.white.opacity(0.1) : Color.blue.opacity(0.1)
+                )
+                .clipShape(Capsule())
+            }
+            .actionSheet(isPresented: $showSleepTimerMenu) {
+                ActionSheet(title: Text("Sleep Timer"), buttons: [
+                    .default(Text("15 Minuten")) { audioManager.startSleepTimer(minutes: 15) },
+                    .default(Text("30 Minuten")) { audioManager.startSleepTimer(minutes: 30) },
+                    .default(Text("45 Minuten")) { audioManager.startSleepTimer(minutes: 45) },
+                    .default(Text("60 Minuten")) { audioManager.startSleepTimer(minutes: 60) },
+                    .destructive(Text("Ausschalten")) { audioManager.stopSleepTimer() },
+                    .cancel()
+                ])
+            }
+
             // Dark Mode Toggle
             Button(action: {
                 withAnimation(.easeInOut(duration: 0.3)) {
@@ -167,37 +195,82 @@ struct ContentView: View {
     
     // MARK: - Control Section
     private var controlSection: some View {
-        HStack(spacing: 40) {
-            Button(action: {
-                audioManager.previousTrack()
-            }) {
-                Image(systemName: "backward.fill")
-                    .font(.title)
-                    .foregroundColor(themeManager.isDarkMode ? .white : .blue)
+        VStack(spacing: 20) {
+            if audioManager.needsDownload {
+                // Download Interface
+                VStack(spacing: 15) {
+                    Text("Audio nicht gefunden")
+                        .foregroundColor(.secondary)
+
+                    if audioManager.isDownloading {
+                        ProgressView(value: audioManager.downloadProgress)
+                            .progressViewStyle(LinearProgressViewStyle())
+                            .frame(width: 200)
+                        Text("\(Int(audioManager.downloadProgress * 100))%")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    } else {
+                        Button(action: {
+                            if let track = audioManager.selectedTrack {
+                                audioManager.downloadTrack(surah: track)
+                            }
+                        }) {
+                            HStack {
+                                Image(systemName: "icloud.and.arrow.down")
+                                Text("Jetzt herunterladen")
+                            }
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .padding()
+                            .background(Color.blue)
+                            .cornerRadius(10)
+                        }
+                    }
+                }
+                .padding()
+                .background(
+                    RoundedRectangle(cornerRadius: 15)
+                        .fill(Color(UIColor.secondarySystemBackground))
+                )
+            } else {
+                // Playback Controls
+                HStack(spacing: 40) {
+                    Button(action: {
+                        audioManager.previousTrack()
+                    }) {
+                        Image(systemName: "backward.fill")
+                            .font(.title)
+                            .foregroundColor(themeManager.isDarkMode ? .white : .blue)
+                    }
+
+                    Button(action: {
+                        audioManager.playPause()
+                    }) {
+                        Image(systemName: audioManager.isPlaying ? "pause.circle.fill" : "play.circle.fill")
+                            .font(.system(size: 65))
+                            .foregroundColor(themeManager.isDarkMode ? .white : .blue)
+                    }
+
+                    Button(action: {
+                        audioManager.nextTrack()
+                    }) {
+                        Image(systemName: "forward.fill")
+                            .font(.title)
+                            .foregroundColor(themeManager.isDarkMode ? .white : .blue)
+                    }
+                }
+                .padding()
+                .background(
+                    RoundedRectangle(cornerRadius: 20)
+                        .fill(themeManager.isDarkMode ? Color.white.opacity(0.1) : Color.blue.opacity(0.1))
+                        .shadow(radius: 5)
+                )
             }
             
-            Button(action: {
-                audioManager.playPause()
-            }) {
-                Image(systemName: audioManager.isPlaying ? "pause.circle.fill" : "play.circle.fill")
-                    .font(.system(size: 65))
-                    .foregroundColor(themeManager.isDarkMode ? .white : .blue)
-            }
-            
-            Button(action: {
-                audioManager.nextTrack()
-            }) {
-                Image(systemName: "forward.fill")
-                    .font(.title)
-                    .foregroundColor(themeManager.isDarkMode ? .white : .blue)
-            }
+            // AirPlay
+            AirPlayView()
+                .frame(width: 44, height: 44)
         }
-        .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 20)
-                .fill(themeManager.isDarkMode ? Color.white.opacity(0.1) : Color.blue.opacity(0.1))
-                .shadow(radius: 5)
-        )
     }
     
     // MARK: - Helper Methods
