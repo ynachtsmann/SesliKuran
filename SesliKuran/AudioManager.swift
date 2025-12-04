@@ -2,7 +2,6 @@
 import Foundation
 import AVFoundation
 import MediaPlayer
-import Foundation
 
 // MARK: - Audio Manager Class
 class AudioManager: ObservableObject {
@@ -11,14 +10,14 @@ class AudioManager: ObservableObject {
     @Published var isPlaying = false
     @Published var currentTime: TimeInterval = 0
     @Published var duration: TimeInterval = 0
-    @Published var selectedTrack: String?
+    @Published var selectedTrack: Surah?
     @Published var isLoading = false
     @Published var playbackRate: Float = 1.0
     @Published var lastPlayedPositions: [String: TimeInterval] = [:]
     
     // MARK: - Private Properties
     private var timer: Timer?
-    private var audioList = (1...115).map { "Audio \($0)" }
+    // Using SurahData.allSurahs now
     
     // MARK: - Initialization
     init() {
@@ -79,7 +78,7 @@ class AudioManager: ObservableObject {
     private func updateNowPlayingInfo() {
         var nowPlayingInfo = [String: Any]()
         
-        nowPlayingInfo[MPMediaItemPropertyTitle] = selectedTrack ?? "Kein Titel"
+        nowPlayingInfo[MPMediaItemPropertyTitle] = selectedTrack?.name ?? "Kein Titel"
         nowPlayingInfo[MPNowPlayingInfoPropertyElapsedPlaybackTime] = currentTime
         nowPlayingInfo[MPMediaItemPropertyPlaybackDuration] = duration
         nowPlayingInfo[MPNowPlayingInfoPropertyPlaybackRate] = isPlaying ? playbackRate : 0.0
@@ -112,7 +111,8 @@ class AudioManager: ObservableObject {
     // MARK: - Position Management
     private func saveCurrentPosition() {
         guard let track = selectedTrack else { return }
-        lastPlayedPositions[track] = currentTime
+        let key = "Audio \(track.id)"
+        lastPlayedPositions[key] = currentTime
         saveLastPlayedPositions()
     }
     
@@ -130,48 +130,68 @@ class AudioManager: ObservableObject {
     func nextTrack() {
         saveCurrentPosition()
         isLoading = true
-        guard let currentTrack = selectedTrack,
-              let currentIndex = audioList.firstIndex(of: currentTrack) else {
+        guard let currentTrack = selectedTrack else {
             isLoading = false
             return
         }
         
-        let nextIndex = (currentIndex + 1) % audioList.count
-        selectedTrack = audioList[nextIndex]
+        let currentIndex = currentTrack.id - 1
+        let nextIndex = (currentIndex + 1) % SurahData.allSurahs.count
+        selectedTrack = SurahData.allSurahs[nextIndex]
         loadAudio(track: selectedTrack!)
     }
     
     func previousTrack() {
         saveCurrentPosition()
         isLoading = true
-        guard let currentTrack = selectedTrack,
-              let currentIndex = audioList.firstIndex(of: currentTrack) else {
+        guard let currentTrack = selectedTrack else {
             isLoading = false
             return
         }
         
-        let previousIndex = (currentIndex - 1 + audioList.count) % audioList.count
-        selectedTrack = audioList[previousIndex]
+        let currentIndex = currentTrack.id - 1
+        let previousIndex = (currentIndex - 1 + SurahData.allSurahs.count) % SurahData.allSurahs.count
+        selectedTrack = SurahData.allSurahs[previousIndex]
         loadAudio(track: selectedTrack!)
     }
     
     // MARK: - Audio Loading
-    func loadAudio(track: String) {
+    func loadAudio(track: Surah) {
         isLoading = true
+        selectedTrack = track // Ensure selectedTrack is set
+
+        let filename = "Audio \(track.id)"
+        var url: URL?
         
-        guard let url = Bundle.main.url(forResource: track, withExtension: "mp3") else {
-            print("Audio file nicht gefunden: \(track)")
+        // 1. Check Bundle
+        if let bundleUrl = Bundle.main.url(forResource: filename, withExtension: "mp3") {
+            url = bundleUrl
+        } else {
+            // 2. Check Documents Directory
+            let fileManager = FileManager.default
+            if let documentDirectory = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first {
+                let documentUrl = documentDirectory.appendingPathComponent("\(filename).mp3")
+                if fileManager.fileExists(atPath: documentUrl.path) {
+                    url = documentUrl
+                }
+            }
+        }
+
+        guard let validUrl = url else {
+            print("Audio file nicht gefunden: \(filename).mp3")
             isLoading = false
+            // Optional: Handle missing file in UI (e.g. show alert)
             return
         }
         
         do {
-            audioPlayer = try AVAudioPlayer(contentsOf: url)
+            audioPlayer = try AVAudioPlayer(contentsOf: validUrl)
             audioPlayer?.prepareToPlay()
             audioPlayer?.rate = playbackRate
             duration = audioPlayer?.duration ?? 0
             
-            if let lastPosition = lastPlayedPositions[track] {
+            let key = "Audio \(track.id)"
+            if let lastPosition = lastPlayedPositions[key] {
                 audioPlayer?.currentTime = lastPosition
                 currentTime = lastPosition
             } else {
@@ -212,15 +232,17 @@ class AudioManager: ObservableObject {
     // MARK: - Cleanup
     func cleanupUnusedAudioFiles() {
         let fileManager = FileManager.default
-        let documentsDirectory = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first!
+        guard let documentsDirectory = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else { return }
         
         do {
             let fileURLs = try fileManager.contentsOfDirectory(at: documentsDirectory, includingPropertiesForKeys: nil)
             let audioFileURLs = fileURLs.filter { $0.pathExtension == "mp3" }
             
+            let validFilenames = Set(SurahData.allSurahs.map { "Audio \($0.id).mp3" })
+
             for fileURL in audioFileURLs {
                 let fileName = fileURL.lastPathComponent
-                if !audioList.contains(fileName.replacingOccurrences(of: ".mp3", with: "")) {
+                if !validFilenames.contains(fileName) {
                     try fileManager.removeItem(at: fileURL)
                     print("Gelöschte unbenutzte Audiodatei: \(fileName)")
                 }
@@ -237,4 +259,3 @@ class AudioManager: ObservableObject {
         cleanupUnusedAudioFiles()
     }
 }
-

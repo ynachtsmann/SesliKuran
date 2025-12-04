@@ -122,11 +122,23 @@ struct ContentView: View {
                         .foregroundColor(themeManager.isDarkMode ? .white : .blue)
                 )
             
-            Text(audioManager.selectedTrack ?? "Kein Titel ausgewählt")
-                .font(.title2)
-                .fontWeight(.semibold)
-                .foregroundColor(themeManager.isDarkMode ? .white : .primary)
-                .lineLimit(1)
+            if let selectedTrack = audioManager.selectedTrack {
+                Text(selectedTrack.name)
+                    .font(.title2)
+                    .fontWeight(.semibold)
+                    .foregroundColor(themeManager.isDarkMode ? .white : .primary)
+                    .lineLimit(1)
+
+                Text(selectedTrack.englishName)
+                    .font(.subheadline)
+                    .foregroundColor(themeManager.isDarkMode ? .gray : .secondary)
+            } else {
+                Text("Kein Titel ausgewählt")
+                    .font(.title2)
+                    .fontWeight(.semibold)
+                    .foregroundColor(themeManager.isDarkMode ? .white : .primary)
+                    .lineLimit(1)
+            }
             
             timeSliderView
         }

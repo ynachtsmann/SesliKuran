@@ -5,10 +5,10 @@ struct AudioListView: View {
     @EnvironmentObject private var themeManager: ThemeManager
     @EnvironmentObject private var audioManager: AudioManager
     @Binding var isShowing: Bool
-    let onTrackSelected: (String) -> Void
-    private let audioTracks = (1...115).map { "Audio \($0)" }
+    let onTrackSelected: (Surah) -> Void
+    private let allSurahs = SurahData.allSurahs
     
-    @State private var loadedTracks: Int = 10
+    @State private var loadedTracks: Int = 20
     @State private var isLoading = false
     
     var body: some View {
@@ -31,16 +31,16 @@ struct AudioListView: View {
             
             ScrollView {
                 LazyVStack(spacing: 10) {
-                    ForEach(audioTracks.prefix(loadedTracks), id: \.self) { track in
+                    ForEach(allSurahs.prefix(loadedTracks)) { surah in
                         AudioTrackRow(
-                            track: track,
+                            surah: surah,
                             isDarkMode: themeManager.isDarkMode,
-                            isCurrentTrack: track == audioManager.selectedTrack,
+                            isCurrentTrack: surah.id == audioManager.selectedTrack?.id,
                             onTrackSelected: onTrackSelected
                         )
                     }
                     
-                    if loadedTracks < audioTracks.count {
+                    if loadedTracks < allSurahs.count {
                         Button(action: loadMoreTracks) {
                             if isLoading {
                                 ProgressView()
@@ -69,7 +69,7 @@ struct AudioListView: View {
         
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             withAnimation {
-                loadedTracks = min(loadedTracks + 5, audioTracks.count)
+                loadedTracks = min(loadedTracks + 20, allSurahs.count)
                 isLoading = false
             }
         }
@@ -77,23 +77,23 @@ struct AudioListView: View {
 }
 
 struct AudioTrackRow: View {
-    let track: String
+    let surah: Surah
     let isDarkMode: Bool
     let isCurrentTrack: Bool
-    let onTrackSelected: (String) -> Void
+    let onTrackSelected: (Surah) -> Void
     
     var body: some View {
         Button(action: {
-            onTrackSelected(track)
+            onTrackSelected(surah)
         }) {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(track)
+                    Text("\(surah.id). \(surah.name)")
                         .foregroundColor(isDarkMode ? .white : .primary)
                         .font(.headline)
                         .lineLimit(1)
                     
-                    Text("Kapitel \(track.replacingOccurrences(of: "Audio ", with: ""))")
+                    Text(surah.englishName)
                         .font(.caption)
                         .foregroundColor(isDarkMode ? .gray : .secondary)
                 }
