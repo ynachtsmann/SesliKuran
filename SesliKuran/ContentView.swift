@@ -16,11 +16,7 @@ struct ContentView: View {
             ZStack(alignment: .topLeading) {
                 // Hintergrundfarbe
                 Group {
-                    if themeManager.isDarkMode {
-                        Color.black.opacity(0.9)
-                    } else {
-                        Color.white
-                    }
+                    Color(UIColor.systemBackground)
                 }
                 .edgesIgnoringSafeArea(.all)
                 
@@ -34,32 +30,6 @@ struct ContentView: View {
                 }
                 .padding()
                 
-                // Audio List mit Animation vom Button
-                if showSlotSelection {
-                    GeometryReader { _ in
-                        VStack {
-                            AudioListView(isShowing: $showSlotSelection) { selectedTrack in
-                                audioManager.selectedTrack = selectedTrack
-                                audioManager.loadAudio(track: selectedTrack)
-                                withAnimation(.easeInOut(duration: 0.3)) {
-                                    showSlotSelection = false
-                                }
-                            }
-                            .environmentObject(audioManager)  // Diese Zeile hinzufügen
-                            .environmentObject(themeManager)
-                        }
-                        .frame(width: UIScreen.main.bounds.width * 0.8)
-                        .background(themeManager.isDarkMode ? Color.black : Color.white)
-                        .cornerRadius(15)
-                        .shadow(radius: 10)
-                        .offset(y: 60)
-                        .transition(.asymmetric(
-                            insertion: .scale(scale: 0.1, anchor: .topLeading).combined(with: .opacity),
-                            removal: .scale(scale: 0.1, anchor: .topLeading).combined(with: .opacity)
-                        ))
-                    }
-                }
-                
                 // Loading Overlay
                 if audioManager.isLoading {
                     LoadingView()
@@ -69,6 +39,34 @@ struct ContentView: View {
             }
             .navigationBarHidden(true)
             .preferredColorScheme(themeManager.isDarkMode ? .dark : .light)
+            .sheet(isPresented: $showSlotSelection) {
+                if #available(iOS 16.0, *) {
+                    AudioListView(isShowing: $showSlotSelection) { selectedTrack in
+                        audioManager.selectedTrack = selectedTrack
+                        audioManager.loadAudio(track: selectedTrack)
+                        showSlotSelection = false
+                    }
+                    .environmentObject(audioManager)
+                    .environmentObject(themeManager)
+                    .presentationDetents([.medium, .large])
+                } else {
+                    AudioListView(isShowing: $showSlotSelection) { selectedTrack in
+                        audioManager.selectedTrack = selectedTrack
+                        audioManager.loadAudio(track: selectedTrack)
+                        showSlotSelection = false
+                    }
+                    .environmentObject(audioManager)
+                    .environmentObject(themeManager)
+                }
+            }
+            .alert(isPresented: Binding<Bool>(
+                get: { audioManager.errorMessage != nil },
+                set: { if !$0 { audioManager.errorMessage = nil } }
+            )) {
+                Alert(title: Text("Fehler"),
+                      message: Text(audioManager.errorMessage ?? "Unbekannter Fehler"),
+                      dismissButton: .default(Text("OK")))
+            }
         }
     }
     
@@ -76,9 +74,7 @@ struct ContentView: View {
     private var headerSection: some View {
         HStack {
             Button(action: {
-                withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
-                    showSlotSelection.toggle()
-                }
+                showSlotSelection.toggle()
             }) {
                 Image(systemName: "music.note.list")
                     .font(.title2)
