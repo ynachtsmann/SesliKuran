@@ -12,23 +12,7 @@ struct AudioListView: View {
     @State private var isLoading = false
     
     var body: some View {
-        VStack {
-            VStack(spacing: 10) {
-                HStack {
-                    Spacer()
-                    Button(action: {
-                        withAnimation(.easeInOut(duration: 0.3)) {
-                            isShowing = false
-                        }
-                    }) {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.title2)
-                            .foregroundColor(themeManager.isDarkMode ? .white : .gray)
-                            .padding()
-                    }
-                }
-            }
-            
+        NavigationView {
             ScrollView {
                 LazyVStack(spacing: 10) {
                     ForEach(allSurahs.prefix(loadedTracks)) { surah in
@@ -58,8 +42,10 @@ struct AudioListView: View {
                 .padding()
             }
         }
-        .background(themeManager.isDarkMode ? Color.black : Color.white)
-        .edgesIgnoringSafeArea(.bottom)
+        .background(Color(UIColor.systemBackground))
+        .navigationTitle("Surah Auswahl")
+        .navigationBarTitleDisplayMode(.inline)
+        }
     }
     
     private func loadMoreTracks() {
@@ -89,26 +75,25 @@ struct AudioTrackRow: View {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("\(surah.id). \(surah.name)")
-                        .foregroundColor(isDarkMode ? .white : .primary)
+                        .foregroundColor(.primary)
                         .font(.headline)
                         .lineLimit(1)
                     
                     Text(surah.englishName)
                         .font(.caption)
-                        .foregroundColor(isDarkMode ? .gray : .secondary)
+                        .foregroundColor(.secondary)
                 }
                 Spacer()
                 Image(systemName: isCurrentTrack ? "pause.circle.fill" : "play.circle.fill")
                     .font(.title2)
-                    .foregroundColor(isDarkMode ? .white : .blue)
+                    .foregroundColor(isCurrentTrack ? .accentColor : .blue)
             }
             .padding()
             .background(
                 RoundedRectangle(cornerRadius: 10)
-                    .fill(isCurrentTrack ?
-                          (isDarkMode ? Color.blue.opacity(0.3) : Color.blue.opacity(0.2)) :
-                          (isDarkMode ? Color.gray.opacity(0.2) : Color.blue.opacity(0.1)))
+                    .fill(isCurrentTrack ? Color.blue.opacity(0.2) : Color.gray.opacity(0.1))
             )
         }
+        .foregroundColor(.primary)
     }
 }
