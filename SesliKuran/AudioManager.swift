@@ -12,6 +12,7 @@ class AudioManager: ObservableObject {
     @Published var duration: TimeInterval = 0
     @Published var selectedTrack: Surah?
     @Published var isLoading = false
+    @Published var errorMessage: String?
     @Published var playbackRate: Float = 1.0
     @Published var lastPlayedPositions: [String: TimeInterval] = [:]
     
@@ -23,7 +24,13 @@ class AudioManager: ObservableObject {
     init() {
         setupAudioSession()
         setupRemoteControls()
+        setupInterruptionHandling()
         loadLastPlayedPositions()
+
+        // Background cleanup
+        DispatchQueue.global(qos: .background).async { [weak self] in
+            self?.cleanupUnusedAudioFiles()
+        }
     }
     
     // MARK: - Audio Session Setup
@@ -37,6 +44,44 @@ class AudioManager: ObservableObject {
         }
     }
     
+    // MARK: - Interruption Handling
+    private func setupInterruptionHandling() {
+        NotificationCenter.default.addObserver(self,
+                                               selector: #selector(handleInterruption),
+                                               name: AVAudioSession.interruptionNotification,
+                                               object: nil)
+    }
+
+    @objc private func handleInterruption(notification: Notification) {
+        guard let userInfo = notification.userInfo,
+              let typeValue = userInfo[AVAudioSessionInterruptionTypeKey] as? UInt,
+              let type = AVAudioSession.InterruptionType(rawValue: typeValue) else {
+            return
+        }
+
+        switch type {
+        case .began:
+            // Interruption began (e.g. phone call)
+            if isPlaying {
+                isPlaying = false
+                timer?.invalidate()
+                saveCurrentPosition()
+            }
+        case .ended:
+            // Interruption ended
+             if let optionsValue = userInfo[AVAudioSessionInterruptionOptionKey] as? UInt {
+                let options = AVAudioSession.InterruptionOptions(rawValue: optionsValue)
+                if options.contains(.shouldResume) {
+                    audioPlayer?.play()
+                    isPlaying = true
+                    setupTimer()
+                }
+            }
+        @unknown default:
+            break
+        }
+    }
+
     // MARK: - Remote Controls Setup
     private func setupRemoteControls() {
         let commandCenter = MPRemoteCommandCenter.shared()
@@ -103,6 +148,7 @@ class AudioManager: ObservableObject {
     }
     
     func setPlaybackSpeed(_ speed: Float) {
+        audioPlayer?.enableRate = true
         audioPlayer?.rate = speed
         playbackRate = speed
         updateNowPlayingInfo()
@@ -130,12 +176,12 @@ class AudioManager: ObservableObject {
     func nextTrack() {
         saveCurrentPosition()
         isLoading = true
-        guard let currentTrack = selectedTrack else {
+        guard let currentTrack = selectedTrack,
+              let currentIndex = SurahData.allSurahs.firstIndex(of: currentTrack) else {
             isLoading = false
             return
         }
         
-        let currentIndex = currentTrack.id - 1
         let nextIndex = (currentIndex + 1) % SurahData.allSurahs.count
         selectedTrack = SurahData.allSurahs[nextIndex]
         loadAudio(track: selectedTrack!)
@@ -144,12 +190,12 @@ class AudioManager: ObservableObject {
     func previousTrack() {
         saveCurrentPosition()
         isLoading = true
-        guard let currentTrack = selectedTrack else {
+        guard let currentTrack = selectedTrack,
+              let currentIndex = SurahData.allSurahs.firstIndex(of: currentTrack) else {
             isLoading = false
             return
         }
         
-        let currentIndex = currentTrack.id - 1
         let previousIndex = (currentIndex - 1 + SurahData.allSurahs.count) % SurahData.allSurahs.count
         selectedTrack = SurahData.allSurahs[previousIndex]
         loadAudio(track: selectedTrack!)
@@ -158,6 +204,7 @@ class AudioManager: ObservableObject {
     // MARK: - Audio Loading
     func loadAudio(track: Surah) {
         isLoading = true
+        errorMessage = nil
         selectedTrack = track // Ensure selectedTrack is set
 
         let filename = "Audio \(track.id)"
@@ -179,13 +226,14 @@ class AudioManager: ObservableObject {
 
         guard let validUrl = url else {
             print("Audio file nicht gefunden: \(filename).mp3")
+            errorMessage = "Audio file not found: \(filename).mp3"
             isLoading = false
-            // Optional: Handle missing file in UI (e.g. show alert)
             return
         }
         
         do {
             audioPlayer = try AVAudioPlayer(contentsOf: validUrl)
+            audioPlayer?.enableRate = true
             audioPlayer?.prepareToPlay()
             audioPlayer?.rate = playbackRate
             duration = audioPlayer?.duration ?? 0
@@ -208,6 +256,7 @@ class AudioManager: ObservableObject {
             }
         } catch {
             print("Fehler beim Laden der Audiodatei: \(error)")
+            errorMessage = error.localizedDescription
             isLoading = false
         }
     }
@@ -256,6 +305,6 @@ class AudioManager: ObservableObject {
         saveCurrentPosition()
         timer?.invalidate()
         UIApplication.shared.endReceivingRemoteControlEvents()
-        cleanupUnusedAudioFiles()
+        NotificationCenter.default.removeObserver(self)
     }
 }

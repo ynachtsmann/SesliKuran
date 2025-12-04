@@ -69,6 +69,14 @@ struct ContentView: View {
             }
             .navigationBarHidden(true)
             .preferredColorScheme(themeManager.isDarkMode ? .dark : .light)
+            .alert(isPresented: Binding<Bool>(
+                get: { audioManager.errorMessage != nil },
+                set: { if !$0 { audioManager.errorMessage = nil } }
+            )) {
+                Alert(title: Text("Fehler"),
+                      message: Text(audioManager.errorMessage ?? "Unbekannter Fehler"),
+                      dismissButton: .default(Text("OK")))
+            }
         }
     }
     
