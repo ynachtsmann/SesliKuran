@@ -8,107 +8,140 @@ struct AudioListView: View {
     let onTrackSelected: (Surah) -> Void
     private let allSurahs = SurahData.allSurahs
     
-    @State private var loadedTracks: Int = 20
-    @State private var isLoading = false
-    
-    var body: some View {
-        VStack {
-            VStack(spacing: 10) {
-                HStack {
-                    Spacer()
-                    Button(action: {
-                        withAnimation(.easeInOut(duration: 0.3)) {
-                            isShowing = false
-                        }
-                    }) {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.title2)
-                            .foregroundColor(themeManager.isDarkMode ? .white : .gray)
-                            .padding()
-                    }
-                }
-            }
-            
-            ScrollView {
-                LazyVStack(spacing: 10) {
-                    ForEach(allSurahs.prefix(loadedTracks)) { surah in
-                        AudioTrackRow(
-                            surah: surah,
-                            isDarkMode: themeManager.isDarkMode,
-                            isCurrentTrack: surah.id == audioManager.selectedTrack?.id,
-                            onTrackSelected: onTrackSelected
-                        )
-                    }
-                    
-                    if loadedTracks < allSurahs.count {
-                        Button(action: loadMoreTracks) {
-                            if isLoading {
-                                ProgressView()
-                                    .progressViewStyle(CircularProgressViewStyle(
-                                        tint: themeManager.isDarkMode ? .white : .blue
-                                    ))
-                            } else {
-                                Text("Weitere Kapitel laden")
-                                    .foregroundColor(themeManager.isDarkMode ? .white : .blue)
-                            }
-                        }
-                        .padding()
-                    }
-                }
-                .padding()
+    @State private var searchText = ""
+    @AppStorage("Favorites") private var favoritesData: Data = Data()
+    @State private var showFavoritesOnly = false
+
+    var favorites: Set<Int> {
+        get {
+            (try? JSONDecoder().decode(Set<Int>.self, from: favoritesData)) ?? []
+        }
+        set {
+            if let data = try? JSONEncoder().encode(newValue) {
+                favoritesData = data
             }
         }
-        .background(themeManager.isDarkMode ? Color.black : Color.white)
-        .edgesIgnoringSafeArea(.bottom)
+    }
+
+    var filteredSurahs: [Surah] {
+        var surahs = allSurahs
+
+        if showFavoritesOnly {
+            surahs = surahs.filter { favorites.contains($0.id) }
+        }
+
+        if !searchText.isEmpty {
+            surahs = surahs.filter {
+                $0.name.localizedCaseInsensitiveContains(searchText) ||
+                $0.englishName.localizedCaseInsensitiveContains(searchText) ||
+                "\($0.id)".contains(searchText)
+            }
+        }
+
+        return surahs
     }
     
-    private func loadMoreTracks() {
-        guard !isLoading else { return }
-        
-        isLoading = true
-        
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            withAnimation {
-                loadedTracks = min(loadedTracks + 20, allSurahs.count)
-                isLoading = false
+    var body: some View {
+        NavigationView {
+            VStack {
+                Picker("Filter", selection: $showFavoritesOnly) {
+                    Text("Alle").tag(false)
+                    Text("Favoriten").tag(true)
+                }
+                .pickerStyle(SegmentedPickerStyle())
+                .padding()
+
+                if filteredSurahs.isEmpty {
+                    VStack(spacing: 20) {
+                        Spacer()
+                        Image(systemName: showFavoritesOnly ? "star.slash" : "magnifyingglass")
+                            .font(.system(size: 50))
+                            .foregroundColor(.gray)
+                        Text(showFavoritesOnly ? "Keine Favoriten" : "Keine Ergebnisse")
+                            .font(.title3)
+                            .foregroundColor(.secondary)
+                        Spacer()
+                    }
+                } else {
+                    List {
+                        ForEach(filteredSurahs) { surah in
+                            AudioTrackRow(
+                                surah: surah,
+                                isCurrentTrack: surah.id == audioManager.selectedTrack?.id,
+                                isFavorite: favorites.contains(surah.id),
+                                onTrackSelected: onTrackSelected,
+                                onToggleFavorite: {
+                                    toggleFavorite(id: surah.id)
+                                }
+                            )
+                        }
+                    }
+                    .listStyle(PlainListStyle())
+                }
             }
+            .navigationTitle("Surah Auswahl")
+            .navigationBarTitleDisplayMode(.inline)
+            .searchable(text: $searchText, prompt: "Suchen...")
+            .background(Color(UIColor.systemBackground))
         }
+    }
+    
+    private func toggleFavorite(id: Int) {
+        var current = favorites
+        if current.contains(id) {
+            current.remove(id)
+        } else {
+            current.insert(id)
+        }
+        favorites = current
     }
 }
 
 struct AudioTrackRow: View {
     let surah: Surah
-    let isDarkMode: Bool
     let isCurrentTrack: Bool
+    let isFavorite: Bool
     let onTrackSelected: (Surah) -> Void
+    let onToggleFavorite: () -> Void
     
     var body: some View {
-        Button(action: {
-            onTrackSelected(surah)
-        }) {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("\(surah.id). \(surah.name)")
-                        .foregroundColor(isDarkMode ? .white : .primary)
-                        .font(.headline)
-                        .lineLimit(1)
-                    
-                    Text(surah.englishName)
-                        .font(.caption)
-                        .foregroundColor(isDarkMode ? .gray : .secondary)
+        HStack {
+            Button(action: {
+                onTrackSelected(surah)
+            }) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("\(surah.id). \(surah.name)")
+                            .foregroundColor(.primary)
+                            .font(.headline)
+                            .lineLimit(1)
+
+                        Text(surah.englishName)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    Spacer()
                 }
-                Spacer()
-                Image(systemName: isCurrentTrack ? "pause.circle.fill" : "play.circle.fill")
-                    .font(.title2)
-                    .foregroundColor(isDarkMode ? .white : .blue)
             }
-            .padding()
-            .background(
-                RoundedRectangle(cornerRadius: 10)
-                    .fill(isCurrentTrack ?
-                          (isDarkMode ? Color.blue.opacity(0.3) : Color.blue.opacity(0.2)) :
-                          (isDarkMode ? Color.gray.opacity(0.2) : Color.blue.opacity(0.1)))
-            )
+            .buttonStyle(PlainButtonStyle())
+
+            Spacer()
+
+            Button(action: onToggleFavorite) {
+                Image(systemName: isFavorite ? "star.fill" : "star")
+                    .font(.title2)
+                    .foregroundColor(isFavorite ? .yellow : .gray)
+                    .padding(10)
+                    .contentShape(Rectangle()) // Increase hit area
+            }
+            .buttonStyle(PlainButtonStyle())
+
+            if isCurrentTrack {
+                Image(systemName: "chart.bar.fill")
+                    .foregroundColor(.accentColor)
+                    .font(.caption)
+            }
         }
+        .padding(.vertical, 4)
     }
 }
