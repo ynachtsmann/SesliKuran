@@ -4,8 +4,7 @@
 <dict>
 	<key>UIBackgroundModes</key>
 	<array>
-		<string>Required background modes (Array)
-    Item 0 (String) = audio</string>
+		<string>audio</string>
 	</array>
 </dict>
 </plist>
