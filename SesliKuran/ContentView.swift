@@ -8,6 +8,7 @@ struct ContentView: View {
     @StateObject private var audioManager = AudioManager()
     @StateObject private var themeManager = ThemeManager()
     @State private var showSlotSelection = false
+    @State private var showSleepTimerMenu = false
     @State private var scrollOffset: CGFloat = 0
     
     // MARK: - Body
@@ -17,9 +18,9 @@ struct ContentView: View {
                 // Hintergrundfarbe
                 Group {
                     if themeManager.isDarkMode {
-                        Color.black.opacity(0.9)
+                        LinearGradient(gradient: Gradient(colors: [Color.black, Color.gray.opacity(0.3)]), startPoint: .top, endPoint: .bottom)
                     } else {
-                        Color.white
+                        LinearGradient(gradient: Gradient(colors: [Color.white, Color.blue.opacity(0.1)]), startPoint: .top, endPoint: .bottom)
                     }
                 }
                 .edgesIgnoringSafeArea(.all)
@@ -34,32 +35,6 @@ struct ContentView: View {
                 }
                 .padding()
                 
-                // Audio List mit Animation vom Button
-                if showSlotSelection {
-                    GeometryReader { _ in
-                        VStack {
-                            AudioListView(isShowing: $showSlotSelection) { selectedTrack in
-                                audioManager.selectedTrack = selectedTrack
-                                audioManager.loadAudio(track: selectedTrack)
-                                withAnimation(.easeInOut(duration: 0.3)) {
-                                    showSlotSelection = false
-                                }
-                            }
-                            .environmentObject(audioManager)  // Diese Zeile hinzufügen
-                            .environmentObject(themeManager)
-                        }
-                        .frame(width: UIScreen.main.bounds.width * 0.8)
-                        .background(themeManager.isDarkMode ? Color.black : Color.white)
-                        .cornerRadius(15)
-                        .shadow(radius: 10)
-                        .offset(y: 60)
-                        .transition(.asymmetric(
-                            insertion: .scale(scale: 0.1, anchor: .topLeading).combined(with: .opacity),
-                            removal: .scale(scale: 0.1, anchor: .topLeading).combined(with: .opacity)
-                        ))
-                    }
-                }
-                
                 // Loading Overlay
                 if audioManager.isLoading {
                     LoadingView()
@@ -69,6 +44,34 @@ struct ContentView: View {
             }
             .navigationBarHidden(true)
             .preferredColorScheme(themeManager.isDarkMode ? .dark : .light)
+            .sheet(isPresented: $showSlotSelection) {
+                if #available(iOS 16.0, *) {
+                    AudioListView(isShowing: $showSlotSelection) { selectedTrack in
+                        audioManager.selectedTrack = selectedTrack
+                        audioManager.loadAudio(track: selectedTrack)
+                        showSlotSelection = false
+                    }
+                    .environmentObject(audioManager)
+                    .environmentObject(themeManager)
+                    .presentationDetents([.medium, .large])
+                } else {
+                    AudioListView(isShowing: $showSlotSelection) { selectedTrack in
+                        audioManager.selectedTrack = selectedTrack
+                        audioManager.loadAudio(track: selectedTrack)
+                        showSlotSelection = false
+                    }
+                    .environmentObject(audioManager)
+                    .environmentObject(themeManager)
+                }
+            }
+            .alert(isPresented: Binding<Bool>(
+                get: { audioManager.errorMessage != nil },
+                set: { if !$0 { audioManager.errorMessage = nil } }
+            )) {
+                Alert(title: Text("Fehler"),
+                      message: Text(audioManager.errorMessage ?? "Unbekannter Fehler"),
+                      dismissButton: .default(Text("OK")))
+            }
         }
     }
     
@@ -76,9 +79,7 @@ struct ContentView: View {
     private var headerSection: some View {
         HStack {
             Button(action: {
-                withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
-                    showSlotSelection.toggle()
-                }
+                showSlotSelection.toggle()
             }) {
                 Image(systemName: "music.note.list")
                     .font(.title2)
@@ -92,6 +93,37 @@ struct ContentView: View {
             
             Spacer()
             
+            // Sleep Timer
+            Button(action: {
+                showSleepTimerMenu = true
+            }) {
+                HStack(spacing: 4) {
+                    Image(systemName: "timer")
+                        .font(.title2)
+                    if let remaining = audioManager.sleepTimerTimeRemaining {
+                        Text(timeString(time: remaining))
+                            .font(.caption)
+                            .monospacedDigit()
+                    }
+                }
+                .foregroundColor(themeManager.isDarkMode ? .white : .blue)
+                .padding(10)
+                .background(
+                    themeManager.isDarkMode ? Color.white.opacity(0.1) : Color.blue.opacity(0.1)
+                )
+                .clipShape(Capsule())
+            }
+            .actionSheet(isPresented: $showSleepTimerMenu) {
+                ActionSheet(title: Text("Sleep Timer"), buttons: [
+                    .default(Text("15 Minuten")) { audioManager.startSleepTimer(minutes: 15) },
+                    .default(Text("30 Minuten")) { audioManager.startSleepTimer(minutes: 30) },
+                    .default(Text("45 Minuten")) { audioManager.startSleepTimer(minutes: 45) },
+                    .default(Text("60 Minuten")) { audioManager.startSleepTimer(minutes: 60) },
+                    .destructive(Text("Ausschalten")) { audioManager.stopSleepTimer() },
+                    .cancel()
+                ])
+            }
+
             // Dark Mode Toggle
             Button(action: {
                 withAnimation(.easeInOut(duration: 0.3)) {
@@ -112,32 +144,35 @@ struct ContentView: View {
     
     // MARK: - Now Playing Section
     private var nowPlayingSection: some View {
-        VStack(spacing: 15) {
-            RoundedRectangle(cornerRadius: 20)
-                .fill(themeManager.isDarkMode ? Color.white.opacity(0.1) : Color.blue.opacity(0.1))
-                .frame(width: 250, height: 250)
+        VStack(spacing: 20) {
+            RoundedRectangle(cornerRadius: 25)
+                .fill(themeManager.isDarkMode ? Color.white.opacity(0.05) : Color.white)
+                .frame(width: 280, height: 280)
+                .shadow(color: Color.black.opacity(0.2), radius: 20, x: 0, y: 10)
                 .overlay(
                     Image(systemName: "music.note")
-                        .font(.system(size: 80))
-                        .foregroundColor(themeManager.isDarkMode ? .white : .blue)
+                        .font(.system(size: 100))
+                        .foregroundColor(themeManager.isDarkMode ? .white.opacity(0.8) : .blue.opacity(0.8))
                 )
             
-            if let selectedTrack = audioManager.selectedTrack {
-                Text(selectedTrack.name)
-                    .font(.title2)
-                    .fontWeight(.semibold)
-                    .foregroundColor(themeManager.isDarkMode ? .white : .primary)
-                    .lineLimit(1)
+            VStack(spacing: 5) {
+                if let selectedTrack = audioManager.selectedTrack {
+                    Text(selectedTrack.name)
+                        .font(.title)
+                        .fontWeight(.bold)
+                        .foregroundColor(themeManager.isDarkMode ? .white : .primary)
+                        .lineLimit(1)
 
-                Text(selectedTrack.englishName)
-                    .font(.subheadline)
-                    .foregroundColor(themeManager.isDarkMode ? .gray : .secondary)
-            } else {
-                Text("Kein Titel ausgewählt")
-                    .font(.title2)
-                    .fontWeight(.semibold)
-                    .foregroundColor(themeManager.isDarkMode ? .white : .primary)
-                    .lineLimit(1)
+                    Text(selectedTrack.englishName)
+                        .font(.title3)
+                        .foregroundColor(themeManager.isDarkMode ? .gray : .secondary)
+                } else {
+                    Text("Kein Titel ausgewählt")
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                        .foregroundColor(themeManager.isDarkMode ? .white : .primary)
+                        .lineLimit(1)
+                }
             }
             
             timeSliderView
@@ -167,37 +202,71 @@ struct ContentView: View {
     
     // MARK: - Control Section
     private var controlSection: some View {
-        HStack(spacing: 40) {
-            Button(action: {
-                audioManager.previousTrack()
-            }) {
-                Image(systemName: "backward.fill")
-                    .font(.title)
-                    .foregroundColor(themeManager.isDarkMode ? .white : .blue)
+        VStack(spacing: 30) {
+            // Playback Controls
+            HStack(spacing: 30) {
+                // Previous Track
+                Button(action: {
+                    let impactMed = UIImpactFeedbackGenerator(style: .medium)
+                    impactMed.impactOccurred()
+                    audioManager.previousTrack()
+                }) {
+                    Image(systemName: "backward.end.fill")
+                        .font(.title2)
+                        .foregroundColor(themeManager.isDarkMode ? .gray : .secondary)
+                }
+
+                // Skip Backward 15s
+                Button(action: {
+                    let impactLight = UIImpactFeedbackGenerator(style: .light)
+                    impactLight.impactOccurred()
+                    audioManager.skipBackward()
+                }) {
+                    Image(systemName: "gobackward.15")
+                        .font(.title)
+                        .foregroundColor(themeManager.isDarkMode ? .white : .blue)
+                }
+
+                // Play/Pause
+                Button(action: {
+                    let impactHeavy = UIImpactFeedbackGenerator(style: .heavy)
+                    impactHeavy.impactOccurred()
+                    audioManager.playPause()
+                }) {
+                    Image(systemName: audioManager.isPlaying ? "pause.circle.fill" : "play.circle.fill")
+                        .font(.system(size: 75))
+                        .foregroundColor(themeManager.isDarkMode ? .white : .blue)
+                        .shadow(radius: 5)
+                }
+
+                // Skip Forward 30s
+                Button(action: {
+                    let impactLight = UIImpactFeedbackGenerator(style: .light)
+                    impactLight.impactOccurred()
+                    audioManager.skipForward()
+                }) {
+                    Image(systemName: "goforward.30")
+                        .font(.title)
+                        .foregroundColor(themeManager.isDarkMode ? .white : .blue)
+                }
+
+                // Next Track
+                Button(action: {
+                    let impactMed = UIImpactFeedbackGenerator(style: .medium)
+                    impactMed.impactOccurred()
+                    audioManager.nextTrack()
+                }) {
+                    Image(systemName: "forward.end.fill")
+                        .font(.title2)
+                        .foregroundColor(themeManager.isDarkMode ? .gray : .secondary)
+                }
             }
             
-            Button(action: {
-                audioManager.playPause()
-            }) {
-                Image(systemName: audioManager.isPlaying ? "pause.circle.fill" : "play.circle.fill")
-                    .font(.system(size: 65))
-                    .foregroundColor(themeManager.isDarkMode ? .white : .blue)
-            }
-            
-            Button(action: {
-                audioManager.nextTrack()
-            }) {
-                Image(systemName: "forward.fill")
-                    .font(.title)
-                    .foregroundColor(themeManager.isDarkMode ? .white : .blue)
-            }
+            // AirPlay
+            AirPlayView()
+                .frame(width: 44, height: 44)
+                .opacity(0.8)
         }
-        .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 20)
-                .fill(themeManager.isDarkMode ? Color.white.opacity(0.1) : Color.blue.opacity(0.1))
-                .shadow(radius: 5)
-        )
     }
     
     // MARK: - Helper Methods
