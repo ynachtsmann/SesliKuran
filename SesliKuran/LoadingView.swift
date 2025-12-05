@@ -14,19 +14,19 @@ struct LoadingView: View {
             
             VStack(spacing: 20) {
                 ProgressView()
-                    .progressViewStyle(CircularProgressViewStyle(tint: themeManager.isDarkMode ? .white : .blue))
+                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
                     .scaleEffect(1.5)
                 
                 Text("Wird geladen...")
-                    .foregroundColor(themeManager.isDarkMode ? .white : .primary)
+                    .foregroundColor(.white)
                     .font(.headline)
             }
             .padding(30)
             .background(
-                RoundedRectangle(cornerRadius: 15)
-                    .fill(themeManager.isDarkMode ? Color.black.opacity(0.8) : Color.white.opacity(0.8))
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(Material.ultraThinMaterial)
             )
-            .shadow(radius: 10)
+            .shadow(color: Color.black.opacity(0.2), radius: 10, x: 0, y: 5)
         }
     }
 }
