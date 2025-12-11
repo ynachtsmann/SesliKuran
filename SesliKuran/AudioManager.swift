@@ -268,7 +268,8 @@ class AudioManager: NSObject, ObservableObject, AVAudioPlayerDelegate {
                 playLocalAudio(url: bundleUrl, trackId: track.id)
             } else {
                 // Not found locally or in bundle
-                print("Audiodatei muss geladen werden: \(filename).mp3")
+                print("Audiodatei nicht gefunden: \(filename).mp3")
+                errorMessage = "Audiodatei nicht gefunden: \(filename).mp3\n\nBitte fügen Sie die Datei über iTunes/Finder hinzu."
                 needsDownload = true
                 isLoading = false
             }
