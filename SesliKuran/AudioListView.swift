@@ -63,20 +63,28 @@ struct AudioListView: View {
                         Spacer()
                     }
                 } else {
-                    List {
-                        ForEach(filteredSurahs) { surah in
-                            AudioTrackRow(
-                                surah: surah,
-                                isCurrentTrack: surah.id == audioManager.selectedTrack?.id,
-                                isFavorite: favorites.contains(surah.id),
-                                onTrackSelected: onTrackSelected,
-                                onToggleFavorite: {
-                                    toggleFavorite(id: surah.id)
-                                }
-                            )
+                    ScrollViewReader { proxy in
+                        List {
+                            ForEach(filteredSurahs) { surah in
+                                AudioTrackRow(
+                                    surah: surah,
+                                    isCurrentTrack: surah.id == audioManager.selectedTrack?.id,
+                                    isFavorite: favorites.contains(surah.id),
+                                    onTrackSelected: onTrackSelected,
+                                    onToggleFavorite: {
+                                        toggleFavorite(id: surah.id)
+                                    }
+                                )
+                                .id(surah.id)
+                            }
+                        }
+                        .listStyle(PlainListStyle())
+                        .onAppear {
+                            if let selectedId = audioManager.selectedTrack?.id {
+                                proxy.scrollTo(selectedId, anchor: .center)
+                            }
                         }
                     }
-                    .listStyle(PlainListStyle())
                 }
             }
             .navigationTitle("Surah Auswahl")

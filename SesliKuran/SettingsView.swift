@@ -33,6 +33,16 @@ struct SettingsView: View {
                     }
                 }
 
+                Section(header: Text("Hilfe")) {
+                    NavigationLink(destination: HelpView()) {
+                        HStack {
+                            Image(systemName: "questionmark.circle")
+                                .foregroundColor(.blue)
+                            Text("Audio hinzufügen")
+                        }
+                    }
+                }
+
                 Section(header: Text("Über")) {
                     HStack {
                         Text("Version")
@@ -52,5 +62,47 @@ struct SettingsView: View {
                 }
             }
         }
+    }
+}
+
+struct HelpView: View {
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                Text("So fügen Sie Audio-Dateien hinzu")
+                    .font(.title)
+                    .bold()
+
+                Text("Diese App ist ein Offline-Player. Sie können Ihre eigenen Audio-Dateien über iTunes/Finder hinzufügen.")
+                    .font(.body)
+
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("1. Verbinden Sie Ihr iPhone mit dem Computer.")
+                    Text("2. Öffnen Sie iTunes (Windows) oder Finder (Mac).")
+                    Text("3. Gehen Sie zu 'Dateien' und wählen Sie 'SesliKuran'.")
+                    Text("4. Ziehen Sie Ihre MP3-Dateien hinein.")
+                }
+                .padding()
+                .background(Color(UIColor.secondarySystemBackground))
+                .cornerRadius(10)
+
+                Text("Wichtig: Dateinamen")
+                    .font(.headline)
+
+                Text("Die Dateien müssen wie folgt benannt sein:")
+
+                Text("Audio {ID}.mp3")
+                    .font(.system(.body, design: .monospaced))
+                    .padding(5)
+                    .background(Color.yellow.opacity(0.2))
+                    .cornerRadius(5)
+
+                Text("Beispiele: 'Audio 1.mp3' für Al-Fatiha.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            .padding()
+        }
+        .navigationTitle("Hilfe")
     }
 }
