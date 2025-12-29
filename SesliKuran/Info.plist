@@ -4,8 +4,11 @@
 <dict>
 	<key>UIBackgroundModes</key>
 	<array>
-		<string>Required background modes (Array)
-    Item 0 (String) = audio</string>
+		<string>audio</string>
 	</array>
+	<key>UIFileSharingEnabled</key>
+	<true/>
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<true/>
 </dict>
 </plist>

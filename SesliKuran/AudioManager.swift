@@ -17,13 +17,21 @@ class AudioManager: ObservableObject {
     
     // MARK: - Private Properties
     private var timer: Timer?
-    // Using SurahData.allSurahs now
     
     // MARK: - Initialization
     init() {
         setupAudioSession()
         setupRemoteControls()
         loadLastPlayedPositions()
+
+        // Restore last played track or default to Al-Fatiha
+        let lastTrackId = UserDefaults.standard.integer(forKey: "LastPlayedTrackId")
+        if lastTrackId > 0, let track = SurahData.allSurahs.first(where: { $0.id == lastTrackId }) {
+            loadAudio(track: track, autoPlay: false)
+        } else if let firstTrack = SurahData.allSurahs.first {
+            // Default to first track (Al-Fatiha) but don't play
+            loadAudio(track: firstTrack, autoPlay: false)
+        }
     }
     
     // MARK: - Audio Session Setup
@@ -114,6 +122,9 @@ class AudioManager: ObservableObject {
         let key = "Audio \(track.id)"
         lastPlayedPositions[key] = currentTime
         saveLastPlayedPositions()
+
+        // Save current track ID
+        UserDefaults.standard.set(track.id, forKey: "LastPlayedTrackId")
     }
     
     private func loadLastPlayedPositions() {
@@ -129,36 +140,30 @@ class AudioManager: ObservableObject {
     // MARK: - Navigation Controls
     func nextTrack() {
         saveCurrentPosition()
-        isLoading = true
         guard let currentTrack = selectedTrack else {
-            isLoading = false
             return
         }
         
         let currentIndex = currentTrack.id - 1
         let nextIndex = (currentIndex + 1) % SurahData.allSurahs.count
-        selectedTrack = SurahData.allSurahs[nextIndex]
-        loadAudio(track: selectedTrack!)
+        loadAudio(track: SurahData.allSurahs[nextIndex])
     }
     
     func previousTrack() {
         saveCurrentPosition()
-        isLoading = true
         guard let currentTrack = selectedTrack else {
-            isLoading = false
             return
         }
         
         let currentIndex = currentTrack.id - 1
         let previousIndex = (currentIndex - 1 + SurahData.allSurahs.count) % SurahData.allSurahs.count
-        selectedTrack = SurahData.allSurahs[previousIndex]
-        loadAudio(track: selectedTrack!)
+        loadAudio(track: SurahData.allSurahs[previousIndex])
     }
     
     // MARK: - Audio Loading
-    func loadAudio(track: Surah) {
+    func loadAudio(track: Surah, autoPlay: Bool = true) {
         isLoading = true
-        selectedTrack = track // Ensure selectedTrack is set
+        selectedTrack = track
 
         let filename = "Audio \(track.id)"
         var url: URL?
@@ -178,9 +183,8 @@ class AudioManager: ObservableObject {
         }
 
         guard let validUrl = url else {
-            print("Audio file nicht gefunden: \(filename).mp3")
+            print("Audiodatei nicht gefunden: \(filename).mp3")
             isLoading = false
-            // Optional: Handle missing file in UI (e.g. show alert)
             return
         }
         
@@ -198,9 +202,14 @@ class AudioManager: ObservableObject {
                 currentTime = 0
             }
             
-            audioPlayer?.play()
-            isPlaying = true
-            setupTimer()
+            if autoPlay {
+                audioPlayer?.play()
+                isPlaying = true
+                setupTimer()
+            } else {
+                isPlaying = false
+            }
+
             updateNowPlayingInfo()
             
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
@@ -244,7 +253,7 @@ class AudioManager: ObservableObject {
                 let fileName = fileURL.lastPathComponent
                 if !validFilenames.contains(fileName) {
                     try fileManager.removeItem(at: fileURL)
-                    print("Gelöschte unbenutzte Audiodatei: \(fileName)")
+                    print("Unbenutzte Audiodatei gelöscht: \(fileName)")
                 }
             }
         } catch {
