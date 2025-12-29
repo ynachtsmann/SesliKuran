@@ -14,6 +14,8 @@ class AudioManager: ObservableObject {
     @Published var isLoading = false
     @Published var playbackRate: Float = 1.0
     @Published var lastPlayedPositions: [String: TimeInterval] = [:]
+    @Published var showError = false
+    @Published var errorMessage = ""
     
     // MARK: - Private Properties
     private var timer: Timer?
@@ -179,8 +181,9 @@ class AudioManager: ObservableObject {
 
         guard let validUrl = url else {
             print("Audio file nicht gefunden: \(filename).mp3")
+            self.errorMessage = "Die Audiodatei für \(track.name) (Audio \(track.id).mp3) wurde nicht gefunden. Bitte fügen Sie die Datei hinzu."
+            self.showError = true
             isLoading = false
-            // Optional: Handle missing file in UI (e.g. show alert)
             return
         }
         

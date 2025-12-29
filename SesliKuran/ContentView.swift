@@ -69,6 +69,13 @@ struct ContentView: View {
             }
             .navigationBarHidden(true)
             .preferredColorScheme(themeManager.isDarkMode ? .dark : .light)
+            .alert(isPresented: $audioManager.showError) {
+                Alert(
+                    title: Text("Fehler"),
+                    message: Text(audioManager.errorMessage),
+                    dismissButton: .default(Text("OK"))
+                )
+            }
         }
     }
     
