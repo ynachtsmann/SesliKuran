@@ -8,71 +8,31 @@ struct AudioListView: View {
     let onTrackSelected: (Surah) -> Void
     private let allSurahs = SurahData.allSurahs
     
-    @State private var loadedTracks: Int = 20
-    @State private var isLoading = false
-    
     var body: some View {
-        VStack {
-            VStack(spacing: 10) {
-                HStack {
-                    Spacer()
-                    Button(action: {
-                        withAnimation(.easeInOut(duration: 0.3)) {
-                            isShowing = false
-                        }
-                    }) {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.title2)
-                            .foregroundColor(themeManager.isDarkMode ? .white : .gray)
-                            .padding()
+        NavigationView {
+            List(allSurahs) { surah in
+                AudioTrackRow(
+                    surah: surah,
+                    isDarkMode: themeManager.isDarkMode,
+                    isCurrentTrack: surah.id == audioManager.selectedTrack?.id,
+                    onTrackSelected: onTrackSelected
+                )
+                .listRowBackground(themeManager.isDarkMode ? Color.black : Color.white)
+            }
+            .listStyle(.plain)
+            .background(themeManager.isDarkMode ? Color.black : Color.white)
+            .navigationTitle("Suren Auswahl")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Schließen") {
+                        isShowing = false
                     }
+                    .foregroundColor(themeManager.isDarkMode ? .white : .blue)
                 }
             }
-            
-            ScrollView {
-                LazyVStack(spacing: 10) {
-                    ForEach(allSurahs.prefix(loadedTracks)) { surah in
-                        AudioTrackRow(
-                            surah: surah,
-                            isDarkMode: themeManager.isDarkMode,
-                            isCurrentTrack: surah.id == audioManager.selectedTrack?.id,
-                            onTrackSelected: onTrackSelected
-                        )
-                    }
-                    
-                    if loadedTracks < allSurahs.count {
-                        Button(action: loadMoreTracks) {
-                            if isLoading {
-                                ProgressView()
-                                    .progressViewStyle(CircularProgressViewStyle(
-                                        tint: themeManager.isDarkMode ? .white : .blue
-                                    ))
-                            } else {
-                                Text("Weitere Kapitel laden")
-                                    .foregroundColor(themeManager.isDarkMode ? .white : .blue)
-                            }
-                        }
-                        .padding()
-                    }
-                }
-                .padding()
-            }
         }
-        .background(themeManager.isDarkMode ? Color.black : Color.white)
-        .edgesIgnoringSafeArea(.bottom)
-    }
-    
-    private func loadMoreTracks() {
-        guard !isLoading else { return }
-        
-        isLoading = true
-        
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            withAnimation {
-                loadedTracks = min(loadedTracks + 20, allSurahs.count)
-                isLoading = false
-            }
-        }
+        .accentColor(themeManager.isDarkMode ? .white : .blue)
     }
 }
 
@@ -98,17 +58,13 @@ struct AudioTrackRow: View {
                         .foregroundColor(isDarkMode ? .gray : .secondary)
                 }
                 Spacer()
-                Image(systemName: isCurrentTrack ? "pause.circle.fill" : "play.circle.fill")
-                    .font(.title2)
-                    .foregroundColor(isDarkMode ? .white : .blue)
+                if isCurrentTrack {
+                    Image(systemName: "music.note")
+                        .font(.title2)
+                        .foregroundColor(isDarkMode ? .white : .blue)
+                }
             }
-            .padding()
-            .background(
-                RoundedRectangle(cornerRadius: 10)
-                    .fill(isCurrentTrack ?
-                          (isDarkMode ? Color.blue.opacity(0.3) : Color.blue.opacity(0.2)) :
-                          (isDarkMode ? Color.gray.opacity(0.2) : Color.blue.opacity(0.1)))
-            )
+            .padding(.vertical, 5)
         }
     }
 }

@@ -5,8 +5,8 @@ import AVFoundation
 // MARK: - Main View
 struct ContentView: View {
     // MARK: - Properties
-    @StateObject private var audioManager = AudioManager()
-    @StateObject private var themeManager = ThemeManager()
+    @EnvironmentObject var audioManager: AudioManager
+    @EnvironmentObject var themeManager: ThemeManager
     @State private var showSlotSelection = false
     @State private var scrollOffset: CGFloat = 0
     
@@ -34,32 +34,6 @@ struct ContentView: View {
                 }
                 .padding()
                 
-                // Audio List mit Animation vom Button
-                if showSlotSelection {
-                    GeometryReader { _ in
-                        VStack {
-                            AudioListView(isShowing: $showSlotSelection) { selectedTrack in
-                                audioManager.selectedTrack = selectedTrack
-                                audioManager.loadAudio(track: selectedTrack)
-                                withAnimation(.easeInOut(duration: 0.3)) {
-                                    showSlotSelection = false
-                                }
-                            }
-                            .environmentObject(audioManager)  // Diese Zeile hinzufügen
-                            .environmentObject(themeManager)
-                        }
-                        .frame(width: UIScreen.main.bounds.width * 0.8)
-                        .background(themeManager.isDarkMode ? Color.black : Color.white)
-                        .cornerRadius(15)
-                        .shadow(radius: 10)
-                        .offset(y: 60)
-                        .transition(.asymmetric(
-                            insertion: .scale(scale: 0.1, anchor: .topLeading).combined(with: .opacity),
-                            removal: .scale(scale: 0.1, anchor: .topLeading).combined(with: .opacity)
-                        ))
-                    }
-                }
-                
                 // Loading Overlay
                 if audioManager.isLoading {
                     LoadingView()
@@ -69,6 +43,15 @@ struct ContentView: View {
             }
             .navigationBarHidden(true)
             .preferredColorScheme(themeManager.isDarkMode ? .dark : .light)
+            .sheet(isPresented: $showSlotSelection) {
+                AudioListView(isShowing: $showSlotSelection) { selectedTrack in
+                    audioManager.selectedTrack = selectedTrack
+                    audioManager.loadAudio(track: selectedTrack)
+                    showSlotSelection = false
+                }
+                .environmentObject(audioManager)
+                .environmentObject(themeManager)
+            }
         }
     }
     
@@ -76,9 +59,7 @@ struct ContentView: View {
     private var headerSection: some View {
         HStack {
             Button(action: {
-                withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
-                    showSlotSelection.toggle()
-                }
+                showSlotSelection.toggle()
             }) {
                 Image(systemName: "music.note.list")
                     .font(.title2)
@@ -213,6 +194,8 @@ struct ContentView: View {
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
         ContentView()
+            .environmentObject(AudioManager())
+            .environmentObject(ThemeManager())
     }
 }
 #endif

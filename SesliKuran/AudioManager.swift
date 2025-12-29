@@ -17,7 +17,6 @@ class AudioManager: ObservableObject {
     
     // MARK: - Private Properties
     private var timer: Timer?
-    // Using SurahData.allSurahs now
     
     // MARK: - Initialization
     init() {
@@ -129,36 +128,30 @@ class AudioManager: ObservableObject {
     // MARK: - Navigation Controls
     func nextTrack() {
         saveCurrentPosition()
-        isLoading = true
         guard let currentTrack = selectedTrack else {
-            isLoading = false
             return
         }
         
         let currentIndex = currentTrack.id - 1
         let nextIndex = (currentIndex + 1) % SurahData.allSurahs.count
-        selectedTrack = SurahData.allSurahs[nextIndex]
-        loadAudio(track: selectedTrack!)
+        loadAudio(track: SurahData.allSurahs[nextIndex])
     }
     
     func previousTrack() {
         saveCurrentPosition()
-        isLoading = true
         guard let currentTrack = selectedTrack else {
-            isLoading = false
             return
         }
         
         let currentIndex = currentTrack.id - 1
         let previousIndex = (currentIndex - 1 + SurahData.allSurahs.count) % SurahData.allSurahs.count
-        selectedTrack = SurahData.allSurahs[previousIndex]
-        loadAudio(track: selectedTrack!)
+        loadAudio(track: SurahData.allSurahs[previousIndex])
     }
     
     // MARK: - Audio Loading
     func loadAudio(track: Surah) {
         isLoading = true
-        selectedTrack = track // Ensure selectedTrack is set
+        selectedTrack = track
 
         let filename = "Audio \(track.id)"
         var url: URL?
@@ -178,9 +171,8 @@ class AudioManager: ObservableObject {
         }
 
         guard let validUrl = url else {
-            print("Audio file nicht gefunden: \(filename).mp3")
+            print("Audiodatei nicht gefunden: \(filename).mp3")
             isLoading = false
-            // Optional: Handle missing file in UI (e.g. show alert)
             return
         }
         
@@ -244,7 +236,7 @@ class AudioManager: ObservableObject {
                 let fileName = fileURL.lastPathComponent
                 if !validFilenames.contains(fileName) {
                     try fileManager.removeItem(at: fileURL)
-                    print("Gelöschte unbenutzte Audiodatei: \(fileName)")
+                    print("Unbenutzte Audiodatei gelöscht: \(fileName)")
                 }
             }
         } catch {
