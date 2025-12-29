@@ -23,6 +23,15 @@ class AudioManager: ObservableObject {
         setupAudioSession()
         setupRemoteControls()
         loadLastPlayedPositions()
+
+        // Restore last played track or default to Al-Fatiha
+        let lastTrackId = UserDefaults.standard.integer(forKey: "LastPlayedTrackId")
+        if lastTrackId > 0, let track = SurahData.allSurahs.first(where: { $0.id == lastTrackId }) {
+            loadAudio(track: track, autoPlay: false)
+        } else if let firstTrack = SurahData.allSurahs.first {
+            // Default to first track (Al-Fatiha) but don't play
+            loadAudio(track: firstTrack, autoPlay: false)
+        }
     }
     
     // MARK: - Audio Session Setup
@@ -113,6 +122,9 @@ class AudioManager: ObservableObject {
         let key = "Audio \(track.id)"
         lastPlayedPositions[key] = currentTime
         saveLastPlayedPositions()
+
+        // Save current track ID
+        UserDefaults.standard.set(track.id, forKey: "LastPlayedTrackId")
     }
     
     private func loadLastPlayedPositions() {
@@ -149,7 +161,7 @@ class AudioManager: ObservableObject {
     }
     
     // MARK: - Audio Loading
-    func loadAudio(track: Surah) {
+    func loadAudio(track: Surah, autoPlay: Bool = true) {
         isLoading = true
         selectedTrack = track
 
@@ -190,9 +202,14 @@ class AudioManager: ObservableObject {
                 currentTime = 0
             }
             
-            audioPlayer?.play()
-            isPlaying = true
-            setupTimer()
+            if autoPlay {
+                audioPlayer?.play()
+                isPlaying = true
+                setupTimer()
+            } else {
+                isPlaying = false
+            }
+
             updateNowPlayingInfo()
             
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
