@@ -110,7 +110,7 @@ struct ContentView: View {
                     .foregroundColor(themeManager.isDarkMode ? .white : .primary)
                     .lineLimit(1)
 
-                Text(selectedTrack.englishName)
+                Text(selectedTrack.arabicName)
                     .font(.subheadline)
                     .foregroundColor(themeManager.isDarkMode ? .gray : .secondary)
             } else {

@@ -53,7 +53,7 @@ struct AudioTrackRow: View {
                         .font(.headline)
                         .lineLimit(1)
                     
-                    Text(surah.englishName)
+                    Text(surah.arabicName)
                         .font(.caption)
                         .foregroundColor(isDarkMode ? .gray : .secondary)
                 }
