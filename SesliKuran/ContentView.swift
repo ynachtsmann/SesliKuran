@@ -123,13 +123,13 @@ struct ContentView: View {
                 )
             
             if let selectedTrack = audioManager.selectedTrack {
-                Text(selectedTrack.name)
+                Text("\(selectedTrack.name) - \(selectedTrack.germanName)")
                     .font(.title2)
                     .fontWeight(.semibold)
                     .foregroundColor(themeManager.isDarkMode ? .white : .primary)
                     .lineLimit(1)
 
-                Text(selectedTrack.englishName)
+                Text(selectedTrack.arabicName)
                     .font(.subheadline)
                     .foregroundColor(themeManager.isDarkMode ? .gray : .secondary)
             } else {

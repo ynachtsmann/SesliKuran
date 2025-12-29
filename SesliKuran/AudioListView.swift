@@ -88,12 +88,12 @@ struct AudioTrackRow: View {
         }) {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("\(surah.id). \(surah.name)")
+                    Text("\(surah.id). \(surah.name) - \(surah.germanName)")
                         .foregroundColor(isDarkMode ? .white : .primary)
                         .font(.headline)
                         .lineLimit(1)
                     
-                    Text(surah.englishName)
+                    Text(surah.arabicName)
                         .font(.caption)
                         .foregroundColor(isDarkMode ? .gray : .secondary)
                 }
