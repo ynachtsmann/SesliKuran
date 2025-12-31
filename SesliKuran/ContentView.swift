@@ -1,5 +1,6 @@
 // MARK: - Imports
 import SwiftUI
+import UIKit // Added for UIVisualEffectView support
 import AVFoundation
 
 // MARK: - Main View
@@ -8,21 +9,13 @@ struct ContentView: View {
     @StateObject private var audioManager = AudioManager()
     @StateObject private var themeManager = ThemeManager()
     @State private var showSlotSelection = false
-    @State private var scrollOffset: CGFloat = 0
     
     // MARK: - Body
     var body: some View {
         NavigationView {
             ZStack(alignment: .topLeading) {
-                // Hintergrundfarbe
-                Group {
-                    if themeManager.isDarkMode {
-                        Color.black.opacity(0.9)
-                    } else {
-                        Color.white
-                    }
-                }
-                .edgesIgnoringSafeArea(.all)
+                // Living Background
+                AuroraBackgroundView()
                 
                 // Main Content
                 VStack(spacing: 20) {
@@ -34,10 +27,20 @@ struct ContentView: View {
                 }
                 .padding()
                 
-                // Audio List mit Animation vom Button
+                // Audio List Overlay (Glass Sheet)
                 if showSlotSelection {
-                    GeometryReader { _ in
+                    ZStack {
+                        // Dimmed background
+                        Color.black.opacity(0.4)
+                            .edgesIgnoringSafeArea(.all)
+                            .onTapGesture {
+                                withAnimation {
+                                    showSlotSelection = false
+                                }
+                            }
+
                         VStack {
+                            Spacer()
                             AudioListView(isShowing: $showSlotSelection) { selectedTrack in
                                 audioManager.selectedTrack = selectedTrack
                                 audioManager.loadAudio(track: selectedTrack)
@@ -45,19 +48,18 @@ struct ContentView: View {
                                     showSlotSelection = false
                                 }
                             }
-                            .environmentObject(audioManager)  // Diese Zeile hinzufügen
+                            .environmentObject(audioManager)
                             .environmentObject(themeManager)
+                            .frame(height: UIScreen.main.bounds.height * 0.7)
+                            .background(
+                                VisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterialDark))
+                                    .clipShape(RoundedRectangle(cornerRadius: 25, style: .continuous))
+                            )
+                            .transition(.move(edge: .bottom))
                         }
-                        .frame(width: UIScreen.main.bounds.width * 0.8)
-                        .background(themeManager.isDarkMode ? Color.black : Color.white)
-                        .cornerRadius(15)
-                        .shadow(radius: 10)
-                        .offset(y: 60)
-                        .transition(.asymmetric(
-                            insertion: .scale(scale: 0.1, anchor: .topLeading).combined(with: .opacity),
-                            removal: .scale(scale: 0.1, anchor: .topLeading).combined(with: .opacity)
-                        ))
+                        .edgesIgnoringSafeArea(.bottom)
                     }
+                    .zIndex(2)
                 }
                 
                 // Loading Overlay
@@ -68,7 +70,6 @@ struct ContentView: View {
                 }
             }
             .navigationBarHidden(true)
-            .preferredColorScheme(themeManager.isDarkMode ? .dark : .light)
             .alert(isPresented: $audioManager.showError) {
                 Alert(
                     title: Text("Fehler"),
@@ -77,89 +78,113 @@ struct ContentView: View {
                 )
             }
         }
+        .preferredColorScheme(.dark) // Force Dark mode preference for this futuristic theme
     }
     
     // MARK: - Header Section
     private var headerSection: some View {
         HStack {
-            Button(action: {
+            GlassyButton(iconName: "music.note.list", action: {
                 withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
                     showSlotSelection.toggle()
                 }
-            }) {
-                Image(systemName: "music.note.list")
-                    .font(.title2)
-                    .foregroundColor(themeManager.isDarkMode ? .white : .blue)
-                    .padding(10)
-                    .background(
-                        themeManager.isDarkMode ? Color.white.opacity(0.1) : Color.blue.opacity(0.1)
-                    )
-                    .clipShape(Circle())
-            }
+            })
             
             Spacer()
             
-            // Dark Mode Toggle
-            Button(action: {
+            // Reusing theme manager for legacy logic, but UI is strictly futuristic now.
+            // Keeping the toggle but maybe it changes accent colors or intensity in future?
+            // For now, let's keep it as a "Settings" placeholder or similar, or just Mode toggle.
+            GlassyButton(iconName: themeManager.isDarkMode ? "sun.max.fill" : "moon.fill", action: {
                 withAnimation(.easeInOut(duration: 0.3)) {
                     themeManager.isDarkMode.toggle()
                 }
-            }) {
-                Image(systemName: themeManager.isDarkMode ? "sun.max.fill" : "moon.fill")
-                    .font(.title2)
-                    .foregroundColor(themeManager.isDarkMode ? .white : .blue)
-                    .padding(10)
-                    .background(
-                        themeManager.isDarkMode ? Color.white.opacity(0.1) : Color.blue.opacity(0.1)
-                    )
-                    .clipShape(Circle())
-            }
+            })
         }
     }
     
     // MARK: - Now Playing Section
     private var nowPlayingSection: some View {
-        VStack(spacing: 15) {
-            RoundedRectangle(cornerRadius: 20)
-                .fill(themeManager.isDarkMode ? Color.white.opacity(0.1) : Color.blue.opacity(0.1))
-                .frame(width: 250, height: 250)
-                .overlay(
-                    Image(systemName: "music.note")
-                        .font(.system(size: 80))
-                        .foregroundColor(themeManager.isDarkMode ? .white : .blue)
-                )
-            
-            if let selectedTrack = audioManager.selectedTrack {
-                Text("\(selectedTrack.name) - \(selectedTrack.germanName)")
-                    .font(.title2)
-                    .fontWeight(.semibold)
-                    .foregroundColor(themeManager.isDarkMode ? .white : .primary)
-                    .lineLimit(1)
+        VStack(spacing: 25) {
+            // Cover Art / Futuristic Typography
+            ZStack {
+                Circle()
+                    .fill(Color.white.opacity(0.05))
+                    .frame(width: 280, height: 280)
+                    .overlay(
+                        Circle()
+                            .stroke(
+                                LinearGradient(
+                                    gradient: Gradient(colors: [.cyan.opacity(0.5), .purple.opacity(0.5)]),
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                ),
+                                lineWidth: 2
+                            )
+                    )
+                    .shadow(color: .cyan.opacity(0.3), radius: 20, x: 0, y: 0)
 
-                Text(selectedTrack.arabicName)
-                    .font(.subheadline)
-                    .foregroundColor(themeManager.isDarkMode ? .gray : .secondary)
+                if let selectedTrack = audioManager.selectedTrack {
+                    // Placeholder for future Image logic:
+                    // Image("Surah_\(selectedTrack.id)")
+
+                    VStack(spacing: 5) {
+                        Text("\(selectedTrack.id)")
+                            .font(.system(size: 80, weight: .thin, design: .rounded))
+                            .foregroundColor(.white)
+                            .shadow(color: .white.opacity(0.8), radius: 10)
+
+                        Text("SURAH")
+                            .font(.system(size: 14, weight: .bold, design: .monospaced))
+                            .tracking(5)
+                            .foregroundColor(.white.opacity(0.7))
+                    }
+                } else {
+                    Image(systemName: "music.quarternote.3")
+                        .font(.system(size: 80))
+                        .foregroundColor(.white.opacity(0.5))
+                }
+            }
+            .padding(.bottom, 20)
+            
+            // Text Info
+            if let selectedTrack = audioManager.selectedTrack {
+                VStack(spacing: 8) {
+                    Text("\(selectedTrack.name) - \(selectedTrack.germanName)")
+                        .font(.title2)
+                        .fontWeight(.bold)
+                        .foregroundColor(.white)
+                        .lineLimit(1)
+                        .shadow(radius: 5)
+
+                    Text(selectedTrack.arabicName)
+                        .font(.title3)
+                        .foregroundColor(.white.opacity(0.8))
+                }
             } else {
-                Text("Kein Titel ausgewählt")
+                Text("Wähle eine Surah")
                     .font(.title2)
                     .fontWeight(.semibold)
-                    .foregroundColor(themeManager.isDarkMode ? .white : .primary)
-                    .lineLimit(1)
+                    .foregroundColor(.white.opacity(0.8))
             }
             
+            // Slider
             timeSliderView
+                .padding(.top, 10)
         }
     }
     
     // MARK: - Time Slider
     private var timeSliderView: some View {
         VStack(spacing: 8) {
-            Slider(value: $audioManager.currentTime,
-                   in: 0...audioManager.duration,
-                   onEditingChanged: { _ in
-                audioManager.seek(to: audioManager.currentTime)
-            })
-            .accentColor(themeManager.isDarkMode ? .white : .blue)
+            NeumorphicSlider(
+                value: $audioManager.currentTime,
+                inRange: 0...max(audioManager.duration, 0.01), // Prevent 0 range
+                onEditingChanged: { _ in
+                    audioManager.seek(to: audioManager.currentTime)
+                }
+            )
+            .padding(.horizontal)
             
             HStack {
                 Text(timeString(time: audioManager.currentTime))
@@ -167,9 +192,9 @@ struct ContentView: View {
                 Text(timeString(time: audioManager.duration))
             }
             .font(.caption)
-            .foregroundColor(themeManager.isDarkMode ? .white.opacity(0.7) : .gray)
+            .foregroundColor(.white.opacity(0.6))
+            .padding(.horizontal)
         }
-        .padding(.horizontal)
     }
     
     // MARK: - Control Section
@@ -178,32 +203,34 @@ struct ContentView: View {
             Button(action: {
                 audioManager.previousTrack()
             }) {
-                Image(systemName: "backward.fill")
-                    .font(.title)
-                    .foregroundColor(themeManager.isDarkMode ? .white : .blue)
+                Image(systemName: "backward.end.fill")
+                    .font(.title2)
+                    .foregroundColor(.white)
             }
             
-            Button(action: {
-                audioManager.playPause()
-            }) {
-                Image(systemName: audioManager.isPlaying ? "pause.circle.fill" : "play.circle.fill")
-                    .font(.system(size: 65))
-                    .foregroundColor(themeManager.isDarkMode ? .white : .blue)
-            }
+            GlassyControlButton(
+                iconName: audioManager.isPlaying ? "pause.fill" : "play.fill",
+                action: { audioManager.playPause() },
+                size: 35
+            )
             
             Button(action: {
                 audioManager.nextTrack()
             }) {
-                Image(systemName: "forward.fill")
-                    .font(.title)
-                    .foregroundColor(themeManager.isDarkMode ? .white : .blue)
+                Image(systemName: "forward.end.fill")
+                    .font(.title2)
+                    .foregroundColor(.white)
             }
         }
-        .padding()
+        .padding(.vertical, 20)
+        .padding(.horizontal, 40)
         .background(
-            RoundedRectangle(cornerRadius: 20)
-                .fill(themeManager.isDarkMode ? Color.white.opacity(0.1) : Color.blue.opacity(0.1))
-                .shadow(radius: 5)
+            Capsule()
+                .fill(Color.white.opacity(0.05))
+                .overlay(
+                    Capsule()
+                        .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                )
         )
     }
     
@@ -213,6 +240,13 @@ struct ContentView: View {
         let seconds = Int(time) % 60
         return String(format: "%02d:%02d", minutes, seconds)
     }
+}
+
+// Helper for Blur
+struct VisualEffectView: UIViewRepresentable {
+    var effect: UIVisualEffect?
+    func makeUIView(context: UIViewRepresentableContext<Self>) -> UIVisualEffectView { UIVisualEffectView() }
+    func updateUIView(_ uiView: UIVisualEffectView, context: UIViewRepresentableContext<Self>) { uiView.effect = effect }
 }
 
 // MARK: - Preview
