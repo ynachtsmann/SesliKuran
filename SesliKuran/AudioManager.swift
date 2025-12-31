@@ -4,6 +4,7 @@ import AVFoundation
 import MediaPlayer
 
 // MARK: - Audio Manager Class
+@MainActor
 class AudioManager: ObservableObject {
     // MARK: - Published Properties
     @Published var audioPlayer: AVAudioPlayer?
@@ -181,7 +182,7 @@ class AudioManager: ObservableObject {
 
         guard let validUrl = url else {
             print("Audio file nicht gefunden: \(filename).mp3")
-            self.errorMessage = "Die Audiodatei für \(track.name) (Audio \(track.id).mp3) wurde nicht gefunden. Bitte fügen Sie die Datei hinzu."
+            self.errorMessage = "Die Audiodatei 'Audio \(track.id).mp3' für '\(track.name)' wurde nicht gefunden. Bitte fügen Sie die Datei über iTunes File Sharing hinzu oder integrieren Sie sie in das Bundle. (Siehe Anleitung)"
             self.showError = true
             isLoading = false
             return
