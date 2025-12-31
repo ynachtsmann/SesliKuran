@@ -18,7 +18,7 @@ struct AudioListView: View {
                 Text("Surah Liste")
                     .font(.title3)
                     .fontWeight(.bold)
-                    .foregroundColor(.white)
+                    .foregroundColor(themeManager.isDarkMode ? .white : .black.opacity(0.8))
 
                 Spacer()
 
@@ -29,7 +29,7 @@ struct AudioListView: View {
                 }) {
                     Image(systemName: "xmark.circle.fill")
                         .font(.title2)
-                        .foregroundColor(.white.opacity(0.8))
+                        .foregroundColor(themeManager.isDarkMode ? .white.opacity(0.8) : .gray)
                         .padding()
                 }
             }
@@ -37,11 +37,14 @@ struct AudioListView: View {
             .padding(.top, 20)
             
             ScrollView {
-                LazyVStack(spacing: 12) {
+                // Changed from LazyVStack to standard VStack for more predictable card rendering if needed,
+                // but LazyVStack is better for performance. Keeping LazyVStack but adding padding.
+                LazyVStack(spacing: 16) { // Increased spacing for "Floating" feel
                     ForEach(allSurahs.prefix(loadedTracks)) { surah in
-                        GlassyTrackRow(
+                        GlassyCardRow(
                             surah: surah,
                             isCurrentTrack: surah.id == audioManager.selectedTrack?.id,
+                            isDarkMode: themeManager.isDarkMode,
                             onTrackSelected: onTrackSelected
                         )
                     }
@@ -50,10 +53,10 @@ struct AudioListView: View {
                         Button(action: loadMoreTracks) {
                             if isLoading {
                                 ProgressView()
-                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                    .progressViewStyle(CircularProgressViewStyle(tint: themeManager.isDarkMode ? .white : .gray))
                             } else {
                                 Text("Weitere Kapitel laden")
-                                    .foregroundColor(.white.opacity(0.7))
+                                    .foregroundColor(themeManager.isDarkMode ? .white.opacity(0.7) : .blue)
                                     .padding(.vertical, 10)
                             }
                         }
@@ -62,7 +65,7 @@ struct AudioListView: View {
                 .padding()
             }
         }
-        .background(Color.clear) // Transparent to let the blur from parent show
+        .background(Color.clear)
     }
     
     private func loadMoreTracks() {
@@ -79,9 +82,11 @@ struct AudioListView: View {
     }
 }
 
-struct GlassyTrackRow: View {
+// Renamed and Redesigned as "Card"
+struct GlassyCardRow: View {
     let surah: Surah
     let isCurrentTrack: Bool
+    let isDarkMode: Bool
     let onTrackSelected: (Surah) -> Void
     
     var body: some View {
@@ -92,54 +97,71 @@ struct GlassyTrackRow: View {
                 // Surah Number
                 ZStack {
                     Circle()
-                        .fill(isCurrentTrack ? Color.cyan.opacity(0.3) : Color.white.opacity(0.1))
-                        .frame(width: 40, height: 40)
+                        .fill(
+                            isCurrentTrack ?
+                            (isDarkMode ? Color.cyan.opacity(0.3) : Color.blue.opacity(0.2)) :
+                            (isDarkMode ? Color.white.opacity(0.1) : Color.black.opacity(0.05))
+                        )
+                        .frame(width: 44, height: 44)
 
                     Text("\(surah.id)")
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundColor(.white)
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundColor(isDarkMode ? .white : .black.opacity(0.8))
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text("\(surah.name) - \(surah.germanName)")
-                        .foregroundColor(isCurrentTrack ? .white : .white.opacity(0.9))
+                        .foregroundColor(isDarkMode ? .white : .black.opacity(0.9))
                         .font(.headline)
                         .lineLimit(1)
-                        .shadow(color: isCurrentTrack ? .cyan : .clear, radius: isCurrentTrack ? 5 : 0)
+                        .shadow(color: isCurrentTrack && isDarkMode ? .cyan : .clear, radius: 5)
                     
                     Text(surah.arabicName)
                         .font(.caption)
-                        .foregroundColor(.white.opacity(0.6))
+                        .foregroundColor(isDarkMode ? .white.opacity(0.6) : .gray)
                 }
                 .padding(.leading, 8)
 
                 Spacer()
 
-                // Instead of a button, we use a subtle indicator if selected, or nothing if clean
+                // Active Indicator
                 if isCurrentTrack {
                     Image(systemName: "waveform.path.ecg")
                         .font(.body)
-                        .foregroundColor(.cyan)
-                        .shadow(color: .cyan, radius: 5)
+                        .foregroundColor(isDarkMode ? .cyan : .blue)
+                        .shadow(color: isDarkMode ? .cyan : .clear, radius: 3)
                 }
             }
-            .padding(12)
+            .padding(16)
             .background(
-                RoundedRectangle(cornerRadius: 15)
-                    .fill(isCurrentTrack ? Color.white.opacity(0.15) : Color.white.opacity(0.05))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 15)
-                            .stroke(
-                                LinearGradient(
-                                    gradient: Gradient(colors: isCurrentTrack ? [.cyan.opacity(0.5), .purple.opacity(0.5)] : [.white.opacity(0.1), .white.opacity(0.05)]),
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                ),
-                                lineWidth: 1
-                            )
-                    )
+                ZStack {
+                    // Card Background
+                    if isDarkMode {
+                        Color.white.opacity(0.05)
+                        // Neon border for active
+                        if isCurrentTrack {
+                            RoundedRectangle(cornerRadius: 20)
+                                .stroke(
+                                    LinearGradient(
+                                        gradient: Gradient(colors: [.cyan.opacity(0.6), .purple.opacity(0.6)]),
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    ),
+                                    lineWidth: 1
+                                )
+                        }
+                    } else {
+                        // Light Mode "Frost" Card
+                        Color.white.opacity(0.7)
+                            .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
+                    }
+                }
             )
+            .cornerRadius(20)
+            // Subtle scale effect for active track
+            .scaleEffect(isCurrentTrack ? 1.02 : 1.0)
+            .animation(.spring(), value: isCurrentTrack)
         }
-        .buttonStyle(PlainButtonStyle()) // Removes default button click opacity animation to keep it custom
+        .buttonStyle(PlainButtonStyle())
     }
 }

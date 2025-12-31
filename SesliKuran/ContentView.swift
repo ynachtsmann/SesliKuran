@@ -14,8 +14,8 @@ struct ContentView: View {
     var body: some View {
         NavigationView {
             ZStack(alignment: .topLeading) {
-                // Living Background
-                AuroraBackgroundView()
+                // Living Background - Passed Theme
+                AuroraBackgroundView(isDarkMode: themeManager.isDarkMode)
                 
                 // Main Content
                 VStack(spacing: 20) {
@@ -50,10 +50,11 @@ struct ContentView: View {
                             }
                             .environmentObject(audioManager)
                             .environmentObject(themeManager)
-                            .frame(height: UIScreen.main.bounds.height * 0.7)
+                            .frame(height: UIScreen.main.bounds.height * 0.75) // Slightly taller
                             .background(
-                                VisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterialDark))
-                                    .clipShape(RoundedRectangle(cornerRadius: 25, style: .continuous))
+                                VisualEffectView(effect: UIBlurEffect(style: themeManager.isDarkMode ? .systemUltraThinMaterialDark : .systemUltraThinMaterialLight))
+                                    .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
+                                    .shadow(radius: 20)
                             )
                             .transition(.move(edge: .bottom))
                         }
@@ -70,6 +71,7 @@ struct ContentView: View {
                 }
             }
             .navigationBarHidden(true)
+            // Removed fixed preferredColorScheme to allow dynamic theme switching
             .alert(isPresented: $audioManager.showError) {
                 Alert(
                     title: Text("Fehler"),
@@ -78,28 +80,33 @@ struct ContentView: View {
                 )
             }
         }
-        .preferredColorScheme(.dark) // Force Dark mode preference for this futuristic theme
     }
     
     // MARK: - Header Section
     private var headerSection: some View {
         HStack {
-            GlassyButton(iconName: "music.note.list", action: {
-                withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
-                    showSlotSelection.toggle()
-                }
-            })
+            GlassyButton(
+                iconName: "music.note.list",
+                action: {
+                    withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
+                        showSlotSelection.toggle()
+                    }
+                },
+                isDarkMode: themeManager.isDarkMode
+            )
             
             Spacer()
             
-            // Reusing theme manager for legacy logic, but UI is strictly futuristic now.
-            // Keeping the toggle but maybe it changes accent colors or intensity in future?
-            // For now, let's keep it as a "Settings" placeholder or similar, or just Mode toggle.
-            GlassyButton(iconName: themeManager.isDarkMode ? "sun.max.fill" : "moon.fill", action: {
-                withAnimation(.easeInOut(duration: 0.3)) {
-                    themeManager.isDarkMode.toggle()
-                }
-            })
+            // Functional Theme Toggle
+            GlassyButton(
+                iconName: themeManager.isDarkMode ? "moon.stars.fill" : "sun.max.fill",
+                action: {
+                    withAnimation(.easeInOut(duration: 0.5)) {
+                        themeManager.isDarkMode.toggle()
+                    }
+                },
+                isDarkMode: themeManager.isDarkMode
+            )
         }
     }
     
@@ -109,40 +116,40 @@ struct ContentView: View {
             // Cover Art / Futuristic Typography
             ZStack {
                 Circle()
-                    .fill(Color.white.opacity(0.05))
+                    .fill(themeManager.isDarkMode ? Color.white.opacity(0.05) : Color.white.opacity(0.3))
                     .frame(width: 280, height: 280)
                     .overlay(
                         Circle()
                             .stroke(
                                 LinearGradient(
-                                    gradient: Gradient(colors: [.cyan.opacity(0.5), .purple.opacity(0.5)]),
+                                    gradient: Gradient(colors: themeManager.isDarkMode ? [.cyan.opacity(0.5), .purple.opacity(0.5)] : [.blue.opacity(0.3), .pink.opacity(0.3)]),
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing
                                 ),
                                 lineWidth: 2
                             )
                     )
-                    .shadow(color: .cyan.opacity(0.3), radius: 20, x: 0, y: 0)
+                    .shadow(
+                        color: themeManager.isDarkMode ? .cyan.opacity(0.3) : .black.opacity(0.05),
+                        radius: 20, x: 0, y: 0
+                    )
 
                 if let selectedTrack = audioManager.selectedTrack {
-                    // Placeholder for future Image logic:
-                    // Image("Surah_\(selectedTrack.id)")
-
                     VStack(spacing: 5) {
                         Text("\(selectedTrack.id)")
                             .font(.system(size: 80, weight: .thin, design: .rounded))
-                            .foregroundColor(.white)
-                            .shadow(color: .white.opacity(0.8), radius: 10)
+                            .foregroundColor(themeManager.isDarkMode ? .white : .black.opacity(0.8))
+                            .shadow(color: themeManager.isDarkMode ? .white.opacity(0.8) : .clear, radius: 10)
 
                         Text("SURAH")
                             .font(.system(size: 14, weight: .bold, design: .monospaced))
                             .tracking(5)
-                            .foregroundColor(.white.opacity(0.7))
+                            .foregroundColor(themeManager.isDarkMode ? .white.opacity(0.7) : .gray)
                     }
                 } else {
                     Image(systemName: "music.quarternote.3")
                         .font(.system(size: 80))
-                        .foregroundColor(.white.opacity(0.5))
+                        .foregroundColor(themeManager.isDarkMode ? .white.opacity(0.5) : .gray.opacity(0.5))
                 }
             }
             .padding(.bottom, 20)
@@ -153,19 +160,19 @@ struct ContentView: View {
                     Text("\(selectedTrack.name) - \(selectedTrack.germanName)")
                         .font(.title2)
                         .fontWeight(.bold)
-                        .foregroundColor(.white)
+                        .foregroundColor(themeManager.isDarkMode ? .white : .black.opacity(0.8))
                         .lineLimit(1)
-                        .shadow(radius: 5)
+                        .shadow(radius: themeManager.isDarkMode ? 5 : 0)
 
                     Text(selectedTrack.arabicName)
                         .font(.title3)
-                        .foregroundColor(.white.opacity(0.8))
+                        .foregroundColor(themeManager.isDarkMode ? .white.opacity(0.8) : .gray)
                 }
             } else {
                 Text("Wähle eine Surah")
                     .font(.title2)
                     .fontWeight(.semibold)
-                    .foregroundColor(.white.opacity(0.8))
+                    .foregroundColor(themeManager.isDarkMode ? .white.opacity(0.8) : .gray)
             }
             
             // Slider
@@ -182,7 +189,8 @@ struct ContentView: View {
                 inRange: 0...max(audioManager.duration, 0.01), // Prevent 0 range
                 onEditingChanged: { _ in
                     audioManager.seek(to: audioManager.currentTime)
-                }
+                },
+                isDarkMode: themeManager.isDarkMode
             )
             .padding(.horizontal)
             
@@ -192,7 +200,7 @@ struct ContentView: View {
                 Text(timeString(time: audioManager.duration))
             }
             .font(.caption)
-            .foregroundColor(.white.opacity(0.6))
+            .foregroundColor(themeManager.isDarkMode ? .white.opacity(0.6) : .gray)
             .padding(.horizontal)
         }
     }
@@ -205,13 +213,14 @@ struct ContentView: View {
             }) {
                 Image(systemName: "backward.end.fill")
                     .font(.title2)
-                    .foregroundColor(.white)
+                    .foregroundColor(themeManager.isDarkMode ? .white : .black.opacity(0.7))
             }
             
             GlassyControlButton(
                 iconName: audioManager.isPlaying ? "pause.fill" : "play.fill",
                 action: { audioManager.playPause() },
-                size: 35
+                size: 35,
+                isDarkMode: themeManager.isDarkMode
             )
             
             Button(action: {
@@ -219,17 +228,17 @@ struct ContentView: View {
             }) {
                 Image(systemName: "forward.end.fill")
                     .font(.title2)
-                    .foregroundColor(.white)
+                    .foregroundColor(themeManager.isDarkMode ? .white : .black.opacity(0.7))
             }
         }
         .padding(.vertical, 20)
         .padding(.horizontal, 40)
         .background(
             Capsule()
-                .fill(Color.white.opacity(0.05))
+                .fill(themeManager.isDarkMode ? Color.white.opacity(0.05) : Color.white.opacity(0.5))
                 .overlay(
                     Capsule()
-                        .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                        .stroke(themeManager.isDarkMode ? Color.white.opacity(0.1) : Color.white.opacity(0.4), lineWidth: 1)
                 )
         )
     }
