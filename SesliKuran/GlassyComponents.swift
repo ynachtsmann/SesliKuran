@@ -7,25 +7,33 @@ struct GlassyButton: View {
     var size: CGFloat = 20
     var padding: CGFloat = 12
     var isActive: Bool = false
+    var isDarkMode: Bool = true // Added theme parameter
 
     var body: some View {
         Button(action: action) {
             Image(systemName: iconName)
                 .font(.system(size: size, weight: .bold))
-                .foregroundColor(.white)
+                .foregroundColor(isDarkMode ? .white : Color(white: 0.3))
                 .padding(padding)
                 .background(
                     ZStack {
                         // Glass effect
-                        Color.white.opacity(isActive ? 0.3 : 0.1)
+                        if isDarkMode {
+                            Color.white.opacity(isActive ? 0.3 : 0.1)
+                        } else {
+                            Color.white.opacity(0.6)
+                        }
 
                         // Subtle border
                         RoundedRectangle(cornerRadius: padding * 2)
                             .stroke(
                                 LinearGradient(
-                                    gradient: Gradient(colors: [
+                                    gradient: Gradient(colors: isDarkMode ? [
                                         Color.white.opacity(0.6),
                                         Color.white.opacity(0.1)
+                                    ] : [
+                                        Color.white.opacity(0.9),
+                                        Color.white.opacity(0.4)
                                     ]),
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing
@@ -35,7 +43,10 @@ struct GlassyButton: View {
                     }
                 )
                 .clipShape(Circle())
-                .shadow(color: Color.black.opacity(0.2), radius: 5, x: 0, y: 5)
+                .shadow(
+                    color: isDarkMode ? Color.black.opacity(0.2) : Color.gray.opacity(0.15),
+                    radius: 5, x: 0, y: 5
+                )
         }
     }
 }
@@ -45,25 +56,29 @@ struct GlassyControlButton: View {
     let iconName: String
     let action: () -> Void
     var size: CGFloat = 40
+    var isDarkMode: Bool = true // Added theme parameter
 
     var body: some View {
         Button(action: action) {
             ZStack {
-                // Glow effect
+                // Glow effect (Stronger in dark mode, subtle in light)
                 Circle()
-                    .fill(Color.white.opacity(0.1))
+                    .fill(isDarkMode ? Color.white.opacity(0.1) : Color.blue.opacity(0.05))
                     .frame(width: size * 2.5, height: size * 2.5)
                     .blur(radius: 10)
 
                 Image(systemName: iconName)
                     .font(.system(size: size, weight: .bold))
-                    .foregroundColor(.white)
+                    .foregroundColor(isDarkMode ? .white : .white) // Keep icon white for contrast on gradient
                     .frame(width: size * 2, height: size * 2)
                     .background(
                         LinearGradient(
-                            gradient: Gradient(colors: [
+                            gradient: Gradient(colors: isDarkMode ? [
                                 Color.white.opacity(0.2),
                                 Color.white.opacity(0.05)
+                            ] : [
+                                Color.blue.opacity(0.6), // Light mode uses a pop of color for main control
+                                Color.purple.opacity(0.4)
                             ]),
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
@@ -84,7 +99,10 @@ struct GlassyControlButton: View {
                                 lineWidth: 1
                             )
                     )
-                    .shadow(color: Color.black.opacity(0.3), radius: 10, x: 0, y: 5)
+                    .shadow(
+                        color: isDarkMode ? Color.black.opacity(0.3) : Color.blue.opacity(0.2),
+                        radius: 10, x: 0, y: 5
+                    )
             }
         }
     }
@@ -95,20 +113,21 @@ struct NeumorphicSlider: View {
     @Binding var value: Double
     var inRange: ClosedRange<Double>
     var onEditingChanged: (Bool) -> Void = { _ in }
+    var isDarkMode: Bool = true // Added theme parameter
 
     var body: some View {
         GeometryReader { geometry in
             ZStack(alignment: .leading) {
                 // Track
                 Capsule()
-                    .fill(Color.black.opacity(0.2))
+                    .fill(isDarkMode ? Color.black.opacity(0.2) : Color.black.opacity(0.05))
                     .frame(height: 6)
 
                 // Progress
                 Capsule()
                     .fill(
                         LinearGradient(
-                            gradient: Gradient(colors: [.cyan, .blue, .purple]),
+                            gradient: Gradient(colors: isDarkMode ? [.cyan, .blue, .purple] : [.blue, .purple, .pink]),
                             startPoint: .leading,
                             endPoint: .trailing
                         )
