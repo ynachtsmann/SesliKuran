@@ -99,8 +99,8 @@ struct GlassyCardRow: View {
                     Circle()
                         .fill(
                             isCurrentTrack ?
-                            (isDarkMode ? Color.cyan.opacity(0.3) : Color.blue.opacity(0.2)) :
-                            (isDarkMode ? Color.white.opacity(0.1) : Color.black.opacity(0.05))
+                            (isDarkMode ? Color.cyan.opacity(0.3) : Color.orange.opacity(0.3)) :
+                            (isDarkMode ? Color.white.opacity(0.1) : Color.white.opacity(0.4))
                         )
                         .frame(width: 44, height: 44)
 
@@ -128,8 +128,8 @@ struct GlassyCardRow: View {
                 if isCurrentTrack {
                     Image(systemName: "waveform.path.ecg")
                         .font(.body)
-                        .foregroundColor(isDarkMode ? .cyan : .blue)
-                        .shadow(color: isDarkMode ? .cyan : .clear, radius: 3)
+                        .foregroundColor(isDarkMode ? .cyan : .orange)
+                        .shadow(color: isDarkMode ? .cyan : .orange.opacity(0.5), radius: 3)
                 }
             }
             .padding(16)
@@ -137,7 +137,10 @@ struct GlassyCardRow: View {
                 ZStack {
                     // Card Background
                     if isDarkMode {
-                        Color.white.opacity(0.05)
+                        // Increased opacity for better readability without container
+                        Color(red: 0.1, green: 0.1, blue: 0.15).opacity(0.7)
+                            .background(VisualEffectView(effect: UIBlurEffect(style: .systemThinMaterialDark)))
+
                         // Neon border for active
                         if isCurrentTrack {
                             RoundedRectangle(cornerRadius: 20)
@@ -151,9 +154,9 @@ struct GlassyCardRow: View {
                                 )
                         }
                     } else {
-                        // Light Mode "Frost" Card
-                        Color.white.opacity(0.7)
-                            .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
+                        // Light Mode "Frost" Card - Warmer/Opaque
+                        Color.white.opacity(0.8)
+                            .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 4)
                     }
                 }
             )
