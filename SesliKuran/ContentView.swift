@@ -27,11 +27,11 @@ struct ContentView: View {
                 }
                 .padding()
                 
-                // Audio List Overlay (Glass Sheet)
+                // Audio List Overlay (True Floating Cards)
                 if showSlotSelection {
                     ZStack {
-                        // Dimmed background
-                        Color.black.opacity(0.4)
+                        // Dimmed background for focus, but clearer than before
+                        Color.black.opacity(0.3)
                             .edgesIgnoringSafeArea(.all)
                             .onTapGesture {
                                 withAnimation {
@@ -41,6 +41,7 @@ struct ContentView: View {
 
                         VStack {
                             Spacer()
+                            // No background container here anymore - just the list
                             AudioListView(isShowing: $showSlotSelection) { selectedTrack in
                                 audioManager.selectedTrack = selectedTrack
                                 audioManager.loadAudio(track: selectedTrack)
@@ -50,12 +51,7 @@ struct ContentView: View {
                             }
                             .environmentObject(audioManager)
                             .environmentObject(themeManager)
-                            .frame(height: UIScreen.main.bounds.height * 0.75) // Slightly taller
-                            .background(
-                                VisualEffectView(effect: UIBlurEffect(style: themeManager.isDarkMode ? .systemUltraThinMaterialDark : .systemUltraThinMaterialLight))
-                                    .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
-                                    .shadow(radius: 20)
-                            )
+                            .frame(height: UIScreen.main.bounds.height * 0.75)
                             .transition(.move(edge: .bottom))
                         }
                         .edgesIgnoringSafeArea(.bottom)
@@ -71,7 +67,6 @@ struct ContentView: View {
                 }
             }
             .navigationBarHidden(true)
-            // Removed fixed preferredColorScheme to allow dynamic theme switching
             .alert(isPresented: $audioManager.showError) {
                 Alert(
                     title: Text("Fehler"),
@@ -122,7 +117,7 @@ struct ContentView: View {
                         Circle()
                             .stroke(
                                 LinearGradient(
-                                    gradient: Gradient(colors: themeManager.isDarkMode ? [.cyan.opacity(0.5), .purple.opacity(0.5)] : [.blue.opacity(0.3), .pink.opacity(0.3)]),
+                                    gradient: Gradient(colors: themeManager.isDarkMode ? [.cyan.opacity(0.5), .purple.opacity(0.5)] : [.orange.opacity(0.4), .pink.opacity(0.4)]),
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing
                                 ),
@@ -130,7 +125,7 @@ struct ContentView: View {
                             )
                     )
                     .shadow(
-                        color: themeManager.isDarkMode ? .cyan.opacity(0.3) : .black.opacity(0.05),
+                        color: themeManager.isDarkMode ? .cyan.opacity(0.3) : .orange.opacity(0.2),
                         radius: 20, x: 0, y: 0
                     )
 

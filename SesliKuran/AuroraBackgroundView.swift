@@ -19,8 +19,8 @@ struct AuroraBackgroundView: View {
             } else {
                 LinearGradient(
                     gradient: Gradient(colors: [
-                        Color(red: 0.95, green: 0.95, blue: 1.0), // Pearl White
-                        Color(red: 0.9, green: 0.92, blue: 0.98)  // Soft Blue-Grey
+                        Color(red: 0.98, green: 0.94, blue: 0.90), // Warm Peach/Sand base
+                        Color(red: 0.95, green: 0.92, blue: 0.96)  // Soft Warm Lilac
                     ]),
                     startPoint: .top,
                     endPoint: .bottom
@@ -31,7 +31,7 @@ struct AuroraBackgroundView: View {
             Circle()
                 .fill(isDarkMode ?
                       Color(red: 0.5, green: 0.0, blue: 0.5).opacity(0.4) : // Dark: Purple
-                      Color(red: 1.0, green: 0.7, blue: 0.8).opacity(0.4)   // Light: Pastel Pink
+                      Color(red: 1.0, green: 0.6, blue: 0.4).opacity(0.3)   // Light: Warm Orange/Peach
                 )
                 .frame(width: 300, height: 300)
                 .blur(radius: 60)
@@ -45,7 +45,7 @@ struct AuroraBackgroundView: View {
             Circle()
                 .fill(isDarkMode ?
                       Color(red: 0.0, green: 0.5, blue: 1.0).opacity(0.4) : // Dark: Blue
-                      Color(red: 0.6, green: 0.8, blue: 1.0).opacity(0.4)   // Light: Sky Blue
+                      Color(red: 1.0, green: 0.4, blue: 0.6).opacity(0.3)   // Light: Warm Pink
                 )
                 .frame(width: 400, height: 400)
                 .blur(radius: 60)
@@ -59,7 +59,7 @@ struct AuroraBackgroundView: View {
             Circle()
                 .fill(isDarkMode ?
                       Color(red: 0.0, green: 0.8, blue: 0.8).opacity(0.3) : // Dark: Teal
-                      Color(red: 0.7, green: 1.0, blue: 0.9).opacity(0.4)   // Light: Mint
+                      Color(red: 1.0, green: 0.8, blue: 0.6).opacity(0.3)   // Light: Warm Gold
                 )
                 .frame(width: 350, height: 350)
                 .blur(radius: 50)
