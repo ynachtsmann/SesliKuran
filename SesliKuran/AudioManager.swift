@@ -182,6 +182,14 @@ class AudioManager: ObservableObject {
 
         guard let validUrl = url else {
             print("Audio file nicht gefunden: \(filename).mp3")
+
+            // Stop current playback if it exists
+            if let player = audioPlayer, player.isPlaying {
+                player.stop()
+            }
+            isPlaying = false
+            timer?.invalidate()
+
             self.errorMessage = "Die Audiodatei 'Audio \(track.id).mp3' für '\(track.name)' wurde nicht gefunden. Bitte fügen Sie die Datei über iTunes File Sharing hinzu oder integrieren Sie sie in das Bundle. (Siehe Anleitung)"
             self.showError = true
             isLoading = false
