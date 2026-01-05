@@ -27,38 +27,6 @@ struct ContentView: View {
                 }
                 .padding()
                 
-                // Audio List Overlay (True Floating Cards)
-                if showSlotSelection {
-                    ZStack {
-                        // Dimmed background for focus, but clearer than before
-                        Color.black.opacity(0.3)
-                            .edgesIgnoringSafeArea(.all)
-                            .onTapGesture {
-                                withAnimation {
-                                    showSlotSelection = false
-                                }
-                            }
-
-                        VStack {
-                            Spacer()
-                            // No background container here anymore - just the list
-                            AudioListView(isShowing: $showSlotSelection) { selectedTrack in
-                                audioManager.selectedTrack = selectedTrack
-                                audioManager.loadAudio(track: selectedTrack)
-                                withAnimation(.easeInOut(duration: 0.3)) {
-                                    showSlotSelection = false
-                                }
-                            }
-                            .environmentObject(audioManager)
-                            .environmentObject(themeManager)
-                            .frame(height: UIScreen.main.bounds.height * 0.75)
-                            .transition(.move(edge: .bottom))
-                        }
-                        .edgesIgnoringSafeArea(.bottom)
-                    }
-                    .zIndex(2)
-                }
-                
                 // Loading Overlay
                 if audioManager.isLoading {
                     LoadingView()
@@ -74,6 +42,15 @@ struct ContentView: View {
                     dismissButton: .default(Text("OK"))
                 )
             }
+            .sheet(isPresented: $showSlotSelection) {
+                AudioListView(isShowing: $showSlotSelection) { selectedTrack in
+                    audioManager.selectedTrack = selectedTrack
+                    audioManager.loadAudio(track: selectedTrack)
+                    showSlotSelection = false
+                }
+                .environmentObject(audioManager)
+                .environmentObject(themeManager)
+            }
         }
     }
     
@@ -81,11 +58,9 @@ struct ContentView: View {
     private var headerSection: some View {
         HStack {
             GlassyButton(
-                iconName: "music.note.list",
+                iconName: "magnifyingglass", // Changed to magnifier to indicate search/list
                 action: {
-                    withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
-                        showSlotSelection.toggle()
-                    }
+                    showSlotSelection = true
                 },
                 isDarkMode: themeManager.isDarkMode
             )

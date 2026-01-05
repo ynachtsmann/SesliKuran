@@ -17,6 +17,7 @@ class AudioManager: ObservableObject {
     @Published var lastPlayedPositions: [String: TimeInterval] = [:]
     @Published var showError = false
     @Published var errorMessage = ""
+    @Published var favorites: Set<Int> = []
     
     // MARK: - Private Properties
     private var timer: Timer?
@@ -27,6 +28,7 @@ class AudioManager: ObservableObject {
         setupAudioSession()
         setupRemoteControls()
         loadLastPlayedPositions()
+        loadFavorites()
     }
     
     // MARK: - Audio Session Setup
@@ -35,11 +37,42 @@ class AudioManager: ObservableObject {
             try AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio)
             try AVAudioSession.sharedInstance().setActive(true)
             UIApplication.shared.beginReceivingRemoteControlEvents()
+
+            NotificationCenter.default.addObserver(self,
+                                                 selector: #selector(handleInterruption),
+                                                 name: AVAudioSession.interruptionNotification,
+                                                 object: nil)
         } catch {
             print("Audio Session Fehler: \(error)")
         }
     }
     
+    // MARK: - Interruption Handling
+    @objc private func handleInterruption(notification: Notification) {
+        guard let userInfo = notification.userInfo,
+              let typeValue = userInfo[AVAudioSessionInterruptionTypeKey] as? UInt,
+              let type = AVAudioSession.InterruptionType(rawValue: typeValue) else {
+            return
+        }
+
+        if type == .began {
+            if isPlaying {
+                audioPlayer?.pause()
+                isPlaying = false
+                timer?.invalidate()
+            }
+        } else if type == .ended {
+            if let optionsValue = userInfo[AVAudioSessionInterruptionOptionKey] as? UInt {
+                let options = AVAudioSession.InterruptionOptions(rawValue: optionsValue)
+                if options.contains(.shouldResume) {
+                    audioPlayer?.play()
+                    isPlaying = true
+                    setupTimer()
+                }
+            }
+        }
+    }
+
     // MARK: - Remote Controls Setup
     private func setupRemoteControls() {
         let commandCenter = MPRemoteCommandCenter.shared()
@@ -127,6 +160,26 @@ class AudioManager: ObservableObject {
     
     private func saveLastPlayedPositions() {
         UserDefaults.standard.set(lastPlayedPositions, forKey: "LastPlayedPositions")
+    }
+
+    // MARK: - Favorites Management
+    func toggleFavorite(surahId: Int) {
+        if favorites.contains(surahId) {
+            favorites.remove(surahId)
+        } else {
+            favorites.insert(surahId)
+        }
+        saveFavorites()
+    }
+
+    private func loadFavorites() {
+        if let savedFavorites = UserDefaults.standard.array(forKey: "Favorites") as? [Int] {
+            favorites = Set(savedFavorites)
+        }
+    }
+
+    private func saveFavorites() {
+        UserDefaults.standard.set(Array(favorites), forKey: "Favorites")
     }
     
     // MARK: - Navigation Controls
