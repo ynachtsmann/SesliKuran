@@ -1,6 +1,7 @@
 import Foundation
 
 // MARK: - App Errors
+// Centralized error handling for the entire data layer
 enum AppError: Error, LocalizedError {
     case fileNotFound(String)
     case fileCorrupt
@@ -28,6 +29,7 @@ enum AppError: Error, LocalizedError {
 }
 
 // MARK: - Persistent Data Model
+// Simple, Codable struct representing the entire user state.
 struct StorageData: Codable {
     var lastPlayedPositions: [String: TimeInterval] = [:]
     var isDarkMode: Bool = true // Default to Dark Mode (Cyberpunk theme)
@@ -35,126 +37,147 @@ struct StorageData: Codable {
     var lastActiveTrackID: Int = 1 // Default to Al-Fatiha
     var favorites: Set<Int> = []
 
-    // Add versioning for future migrations
+    // Versioning for future migrations (Zero-Maintenance/Future-Proof)
     var version: Int = 1
 }
 
-// MARK: - Persistence Manager (Atomic Actor)
+// MARK: - Persistence Manager (High-Performance Actor)
+// Guarantees thread safety for state, and offloads I/O to prevent UI hitches.
 actor PersistenceManager {
     static let shared = PersistenceManager()
 
     private let fileName = "user_data.json"
 
-    // Cache the data in memory for fast access
-    // This is the Source of Truth.
-    private var cachedData: StorageData
+    // In-Memory Source of Truth (Fast Access)
+    private var cachedData: StorageData? // Optional to indicate "not loaded"
+
+    // Serial Queue for non-blocking, safe Disk I/O
+    private static let saveQueue = DispatchQueue(label: "com.seslikuran.persistence", qos: .utility)
 
     private init() {
-        self.cachedData = StorageData()
+        // Init is lightweight. Data is loaded lazily or via explicit call to ensure main thread safety.
+    }
 
-        // SYNC Load on Init to prevent Race Conditions
-        // Since this runs on the Actor's background thread when shared is first accessed,
-        // it might block the *caller* briefly if they await it, but it ensures correctness.
-        // But `init` is synchronous.
-        // We cannot call async functions in init unless in Task.
-        // To be SAFE and "Mission Critical", we perform a BLOCKING READ here.
-        // For a local JSON file < 50KB, this is < 5ms. Acceptable for startup safety.
+    // MARK: - Helper: File URL
+    nonisolated private func fileURL() throws -> URL {
+        let documentDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        return documentDirectory.appendingPathComponent("user_data.json")
+    }
 
+    // MARK: - Public API (Actor Isolated)
+
+    // Optimized: Loads data if needed, otherwise returns cache.
+    // Can be called from Background or Main thread safely.
+    func load() -> StorageData {
+        if let data = cachedData {
+            return data
+        }
+
+        // Sync Load (First Time Only)
+        // Since this is inside an actor, it serializes access.
+        // We do a blocking read here because if the app needs data to start, it MUST wait.
+        // For a small JSON file, this is negligible (<5ms).
         let fileManager = FileManager.default
         if let documentDirectory = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first {
             let url = documentDirectory.appendingPathComponent("user_data.json")
-            do {
-                let data = try Data(contentsOf: url)
-                let decoded = try JSONDecoder().decode(StorageData.self, from: data)
-                self.cachedData = decoded
-            } catch {
-                print("Persistence: No saved data found or decoding failed. Using defaults. (\(error))")
+            if fileManager.fileExists(atPath: url.path) {
+                do {
+                    let data = try Data(contentsOf: url)
+                    let decoded = try JSONDecoder().decode(StorageData.self, from: data)
+                    self.cachedData = decoded
+                    return decoded
+                } catch {
+                    print("Persistence: Error loading data (\(error)). Using defaults.")
+                }
             }
+        }
+
+        let defaults = StorageData()
+        self.cachedData = defaults
+        return defaults
+    }
+
+    func updateLastPlayedPosition(trackId: Int, time: TimeInterval) {
+        ensureLoaded()
+        self.cachedData?.lastPlayedPositions["Audio \(trackId)"] = time
+        self.cachedData?.lastActiveTrackID = trackId
+        self.scheduleSave()
+    }
+
+    func updateTheme(isDarkMode: Bool) {
+        ensureLoaded()
+        self.cachedData?.isDarkMode = isDarkMode
+        self.scheduleSave()
+    }
+
+    func updatePlaybackSpeed(_ speed: Float) {
+        ensureLoaded()
+        self.cachedData?.playbackSpeed = speed
+        self.scheduleSave()
+    }
+
+    func updateFavorites(favorites: Set<Int>) {
+        ensureLoaded()
+        self.cachedData?.favorites = favorites
+        self.scheduleSave()
+    }
+
+    // MARK: - Getters (Granular)
+    // Added to support granular access if needed, though load() is preferred.
+
+    func getIsDarkMode() -> Bool {
+        return load().isDarkMode
+    }
+
+    func getLastPosition(for trackId: Int) -> TimeInterval {
+        return load().lastPlayedPositions["Audio \(trackId)"] ?? 0
+    }
+
+    func getLastActiveTrackID() -> Int {
+        return load().lastActiveTrackID
+    }
+
+    // MARK: - Internal Helpers
+
+    private func ensureLoaded() {
+        if cachedData == nil {
+            _ = load()
         }
     }
 
-    private func fileURL() throws -> URL {
-        let documentDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        return documentDirectory.appendingPathComponent(fileName)
+    // MARK: - Disk I/O Strategy
+
+    private func scheduleSave() {
+        guard let data = self.cachedData else { return }
+
+        // Capture a snapshot of the current state
+        let snapshot = data
+
+        // Offload the I/O to a background serial queue.
+        PersistenceManager.saveQueue.async {
+            self.performSave(snapshot)
+        }
     }
 
-    // MARK: - Load
-    func load() -> StorageData {
-        // Return memory cache immediately
-        return self.cachedData
-    }
-
-    // MARK: - Save to Disk
-    // This is private and called by update methods.
-    // It takes a SNAPSHOT of data to save, to avoid race conditions if `cachedData` changes again.
-    private func saveToDisk(_ dataToSave: StorageData) {
+    // nonisolated allows this to run on the dispatch queue without entering the actor context
+    nonisolated private func performSave(_ data: StorageData) {
         do {
             let url = try fileURL()
-            let tempUrl = try fileURL().appendingPathExtension("tmp")
+            let tempUrl = url.appendingPathExtension("tmp")
 
-            let encoded = try JSONEncoder().encode(dataToSave)
+            let encoded = try JSONEncoder().encode(data)
 
-            // 1. Write to temp file
+            // 1. Write to temp file (Atomic)
             try encoded.write(to: tempUrl, options: [.atomic, .completeFileProtection])
 
-            // 2. Atomic Swap
+            // 2. Atomic Swap (Safe Replace)
             if FileManager.default.fileExists(atPath: url.path) {
                 _ = try FileManager.default.replaceItemAt(url, withItemAt: tempUrl, backupItemName: nil, options: .usingNewMetadataOnly)
             } else {
                 try FileManager.default.moveItem(at: tempUrl, to: url)
             }
-            print("Persistence: Data saved successfully.")
         } catch {
-            print("Persistence: Save failed: \(error)")
+            print("Persistence: Critical Save Error: \(error)")
         }
-    }
-
-    // MARK: - Helper Accessors (Thread Safe Updates)
-
-    func updateLastPlayedPosition(trackId: Int, time: TimeInterval) {
-        // 1. Update In-Memory State Immediately (Synchronous within Actor)
-        self.cachedData.lastPlayedPositions["Audio \(trackId)"] = time
-        self.cachedData.lastActiveTrackID = trackId
-
-        // 2. Capture Snapshot
-        let snapshot = self.cachedData
-
-        // 3. Fire and Forget Disk Write
-        Task {
-            self.saveToDisk(snapshot)
-        }
-    }
-
-    func updateTheme(isDarkMode: Bool) {
-        self.cachedData.isDarkMode = isDarkMode
-        let snapshot = self.cachedData
-        Task {
-            self.saveToDisk(snapshot)
-        }
-    }
-
-    func updatePlaybackSpeed(_ speed: Float) {
-        self.cachedData.playbackSpeed = speed
-        let snapshot = self.cachedData
-        Task {
-            self.saveToDisk(snapshot)
-        }
-    }
-
-    // MARK: - Getters
-    func getIsDarkMode() -> Bool {
-        return cachedData.isDarkMode
-    }
-
-    func getLastActiveTrackID() -> Int {
-        return cachedData.lastActiveTrackID
-    }
-
-    func getLastPosition(for trackId: Int) -> TimeInterval {
-        return cachedData.lastPlayedPositions["Audio \(trackId)"] ?? 0
-    }
-
-    func getPlaybackSpeed() -> Float {
-        return cachedData.playbackSpeed
     }
 }
