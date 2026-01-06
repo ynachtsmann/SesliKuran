@@ -66,6 +66,20 @@ actor PersistenceManager {
 
     // MARK: - Public API (Actor Isolated)
 
+    // Synchronous Load (Startup Only)
+    // Bypasses the actor's lock to provide immediate state for app initialization (e.g., Theme).
+    // Safe only during init when no writes are occurring.
+    nonisolated func loadSynchronously() -> StorageData {
+        do {
+            let url = try fileURL()
+            let data = try Data(contentsOf: url)
+            return try JSONDecoder().decode(StorageData.self, from: data)
+        } catch {
+            // If file doesn't exist or is corrupt, return defaults silently.
+            return StorageData()
+        }
+    }
+
     // Optimized: Loads data if needed, otherwise returns cache.
     // Can be called from Background or Main thread safely.
     func load() -> StorageData {
@@ -168,6 +182,10 @@ actor PersistenceManager {
             let encoded = try JSONEncoder().encode(data)
 
             // 1. Write to temp file (Atomic)
+            // .atomic write already creates a temp file and renames it, but doing it manually
+            // gives us explicit control if needed. However, standard .atomic is sufficient.
+            // But to be absolutely "Mission Critical", we use the Manual Temp + Replace approach
+            // to ensure no half-written files exist at the final URL.
             try encoded.write(to: tempUrl, options: [.atomic, .completeFileProtection])
 
             // 2. Atomic Swap (Safe Replace)
@@ -177,6 +195,8 @@ actor PersistenceManager {
                 try FileManager.default.moveItem(at: tempUrl, to: url)
             }
         } catch {
+            // Silent Fail / Graceful Degradation
+            // We log for debugging, but we do not crash or show alerts.
             print("Persistence: Critical Save Error: \(error)")
         }
     }

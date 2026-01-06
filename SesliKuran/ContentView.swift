@@ -89,6 +89,8 @@ struct ContentView: View {
                 },
                 isDarkMode: themeManager.isDarkMode
             )
+            .accessibilityLabel("Liste anzeigen")
+            .accessibilityHint("Zeigt die Liste aller Surahs an.")
             
             Spacer()
             
@@ -102,6 +104,7 @@ struct ContentView: View {
                 },
                 isDarkMode: themeManager.isDarkMode
             )
+            .accessibilityLabel(themeManager.isDarkMode ? "In den hellen Modus wechseln" : "In den dunklen Modus wechseln")
         }
     }
     
@@ -150,6 +153,7 @@ struct ContentView: View {
             .padding(.bottom, 20)
             
             // Text Info
+            // Defensive Coding: Handle nil selectedTrack gracefully
             if let selectedTrack = audioManager.selectedTrack {
                 VStack(spacing: 8) {
                     Text("\(selectedTrack.name) - \(selectedTrack.germanName)")
@@ -164,10 +168,17 @@ struct ContentView: View {
                         .foregroundColor(themeManager.isDarkMode ? .white.opacity(0.8) : .gray)
                 }
             } else {
-                Text("Wähle eine Surah")
-                    .font(.title2)
-                    .fontWeight(.semibold)
-                    .foregroundColor(themeManager.isDarkMode ? .white.opacity(0.8) : .gray)
+                // Placeholder State - Never Crash
+                VStack(spacing: 8) {
+                    Text("Wähle eine Surah")
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                        .foregroundColor(themeManager.isDarkMode ? .white.opacity(0.8) : .gray)
+
+                    Text("---")
+                        .font(.title3)
+                        .foregroundColor(themeManager.isDarkMode ? .white.opacity(0.5) : .gray.opacity(0.5))
+                }
             }
             
             // Slider
@@ -210,6 +221,7 @@ struct ContentView: View {
                     .font(.title2)
                     .foregroundColor(themeManager.isDarkMode ? .white : .black.opacity(0.7))
             }
+            .accessibilityLabel("Vorherige Surah")
             
             GlassyControlButton(
                 iconName: audioManager.isPlaying ? "pause.fill" : "play.fill",
@@ -217,6 +229,7 @@ struct ContentView: View {
                 size: 35,
                 isDarkMode: themeManager.isDarkMode
             )
+            .accessibilityLabel(audioManager.isPlaying ? "Pause" : "Wiedergabe")
             
             Button(action: {
                 audioManager.nextTrack()
@@ -225,6 +238,7 @@ struct ContentView: View {
                     .font(.title2)
                     .foregroundColor(themeManager.isDarkMode ? .white : .black.opacity(0.7))
             }
+            .accessibilityLabel("Nächste Surah")
         }
         .padding(.vertical, 20)
         .padding(.horizontal, 40)

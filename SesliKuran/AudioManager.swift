@@ -25,11 +25,11 @@ class AudioManager: NSObject, ObservableObject, AVAudioPlayerDelegate {
     // Concurrency: Use Tasks instead of Timer for robust lifecycle management
     private var progressTask: Task<Void, Never>?
     private var heartbeatTask: Task<Void, Never>?
-    
+
     // Retry Logic (Self-Healing)
     private var skipCount: Int = 0
     private let maxSkips: Int = 3
-
+    
     // Sleep Timer
     @Published var sleepTimerTimeRemaining: TimeInterval = 0
     @Published var isSleepTimerActive: Bool = false
@@ -42,38 +42,53 @@ class AudioManager: NSObject, ObservableObject, AVAudioPlayerDelegate {
         setupRemoteCommandCenter()
         setupNotifications()
 
-        // Initial State Load (Async)
-        Task {
-            await loadInitialState()
-        }
+        // Initial State Load (Synchronous)
+        // CRITICAL: Must be loaded before UI renders to avoid 'nil' crash on unwraps.
+        loadInitialStateSync()
     }
     
-    private func loadInitialState() async {
-        // Load Settings from Persistence
-        let persistence = PersistenceManager.shared
-        let settings = await persistence.load()
+    private func loadInitialStateSync() {
+        // Load Settings Synchronously
+        let settings = PersistenceManager.shared.loadSynchronously()
 
         self.playbackRate = settings.playbackSpeed
 
         // Load Last Active Track (Default to 1 if none)
         let lastID = settings.lastActiveTrackID
-        // CORRECTED: Use SurahData.allSurahs
         let lastTrack = SurahData.allSurahs.first(where: { $0.id == lastID }) ?? SurahData.allSurahs[0]
 
         // Prepare the player without auto-playing
+        // Note: loadAudio is safe to call here as we are on MainActor and it sets state.
         self.loadAudio(track: lastTrack, autoPlay: false)
     }
 
     // MARK: - Session Configuration (Crash-Proof)
     private func setupSession() {
-        do {
-            let session = AVAudioSession.sharedInstance()
-            try session.setCategory(.playback, mode: .spokenAudio, options: [.allowBluetooth, .allowBluetoothA2DP])
-            try session.setActive(true)
-        } catch {
-            print("CRITICAL: Failed to setup audio session: \(error)")
-            // In a mission-critical app, we might show a fatal error dialog here,
-            // but for now we log it. The app should still try to function.
+        // Robust Retry Logic for Audio Session Activation
+        // This is crucial for "Crash-Proof" operation if the OS audio daemon is busy.
+        var attempt = 0
+        let maxAttempts = 3
+        var success = false
+
+        // Use A2DP for high quality audio, avoiding low-quality HFP (standard Bluetooth)
+        let options: AVAudioSession.CategoryOptions = [.allowBluetoothA2DP]
+
+        while !success && attempt < maxAttempts {
+            do {
+                let session = AVAudioSession.sharedInstance()
+                try session.setCategory(.playback, mode: .spokenAudio, options: options)
+                try session.setActive(true)
+                success = true
+            } catch {
+                attempt += 1
+                print("CRITICAL: Failed to setup audio session (Attempt \(attempt)): \(error)")
+                if attempt < maxAttempts {
+                    // We can't block the main thread with sleep.
+                    // Instead, we trust that a failure here might be recoverable later or
+                    // via the mediaServicesReset handler.
+                    // Logging is sufficient for "Silent" degradation.
+                }
+            }
         }
     }
     
@@ -211,7 +226,7 @@ class AudioManager: NSObject, ObservableObject, AVAudioPlayerDelegate {
         guard let track = selectedTrack else { return }
         let currentPos = currentTime
         let rate = playbackRate
-
+        
         Task {
             // Fire and forget safe save
             await PersistenceManager.shared.updateLastPlayedPosition(trackId: track.id, time: currentPos)
@@ -337,7 +352,7 @@ class AudioManager: NSObject, ObservableObject, AVAudioPlayerDelegate {
             Task { @MainActor in self?.play() }
             return .success
         }
-        
+
         commandCenter.pauseCommand.addTarget { [weak self] _ in
             Task { @MainActor in self?.pause() }
             return .success
@@ -352,7 +367,7 @@ class AudioManager: NSObject, ObservableObject, AVAudioPlayerDelegate {
             Task { @MainActor in self?.previousTrack() }
             return .success
         }
-        
+
         commandCenter.skipForwardCommand.preferredIntervals = [30]
         commandCenter.skipForwardCommand.addTarget { [weak self] _ in
             Task { @MainActor in self?.skipForward() }
@@ -377,7 +392,7 @@ class AudioManager: NSObject, ObservableObject, AVAudioPlayerDelegate {
             MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
             return
         }
-
+        
         var nowPlayingInfo = [String: Any]()
         nowPlayingInfo[MPMediaItemPropertyTitle] = track.name
         nowPlayingInfo[MPMediaItemPropertyArtist] = track.germanName
@@ -389,15 +404,21 @@ class AudioManager: NSObject, ObservableObject, AVAudioPlayerDelegate {
 
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nowPlayingInfo
     }
-
+    
     // MARK: - Notifications (Interruption & Lifecycle Handling)
     private func setupNotifications() {
         let center = NotificationCenter.default
-
+        
         // Interruption
         center.addObserver(self,
                            selector: #selector(handleInterruption),
                            name: AVAudioSession.interruptionNotification,
+                           object: nil)
+
+        // Media Services Reset (Daemon Crash Recovery) - The 0.01% Scenario
+        center.addObserver(self,
+                           selector: #selector(handleMediaServicesReset),
+                           name: AVAudioSession.mediaServicesWereResetNotification,
                            object: nil)
 
         // Lifecycle (App Background/Termination)
@@ -413,10 +434,55 @@ class AudioManager: NSObject, ObservableObject, AVAudioPlayerDelegate {
                            object: nil)
     }
 
+    @objc private func handleMediaServicesReset(notification: Notification) {
+        // Full Reset of Audio Stack
+        print("CRITICAL: Media Services Reset Detected. Rebuilding Audio Stack...")
+
+        Task { @MainActor in
+            // 1. Tear down existing resources
+            self.stopPlayback()
+            self.audioPlayer = nil
+
+            // 2. Re-initialize Session
+            self.setupSession()
+            self.setupRemoteCommandCenter()
+
+            // 3. Restore State if possible
+            if let track = self.selectedTrack {
+                // Reload without auto-playing to prevent sudden blasting,
+                // or autoplay if it was playing?
+                // Safe bet: Reload and seek, let user press play.
+                self.loadAudio(track: track, autoPlay: false)
+
+                // If it was playing, maybe we can try to resume after a delay?
+                // For safety/Mission Critical, we prefer "Paused & Ready" over "Accidental Noise".
+            }
+        }
+    }
+
     @objc private func handleAppBackground() {
-        // Force save immediately
+        // Force save immediately using Background Task to ensure completion
+        let app = UIApplication.shared
+        var bgTask: UIBackgroundTaskIdentifier = .invalid
+
+        // Ensure robust background task handling
+        bgTask = app.beginBackgroundTask {
+            // Expiration Handler: Final safety net
+            app.endBackgroundTask(bgTask)
+            bgTask = .invalid
+        }
+        
         Task { @MainActor in
             self.saveCurrentPosition()
+            
+            // Allow a small window for the async save to propagate to disk (Queue dispatch)
+            // We use Task.sleep to yield control briefly.
+            try? await Task.sleep(nanoseconds: 200_000_000) // 0.2s buffer
+            
+            if bgTask != .invalid {
+                app.endBackgroundTask(bgTask)
+                bgTask = .invalid
+            }
         }
     }
     
@@ -441,7 +507,7 @@ class AudioManager: NSObject, ObservableObject, AVAudioPlayerDelegate {
             }
         }
     }
-
+    
     // MARK: - AVAudioPlayerDelegate
     // This method is called by the system on a background thread usually, or main thread.
     // We mark it 'nonisolated' so it satisfies the protocol requirements without assuming MainActor.
@@ -452,21 +518,33 @@ class AudioManager: NSObject, ObservableObject, AVAudioPlayerDelegate {
                 self.nextTrack()
             } else {
                 // Playback finished but failed?
-                // Could be corrupt data mid-stream.
-                // We treat it as an error but maybe just stop.
-                self.isPlaying = false
-                self.stopTasks()
+                // Self-Healing: Treat as corrupt end, skip to next.
+                print("Audio finished unsuccessfully. Attempting skip.")
+                if self.skipCount < self.maxSkips {
+                    self.skipCount += 1
+                    self.nextTrack()
+                } else {
+                    self.isPlaying = false
+                    self.stopTasks()
+                }
             }
         }
     }
-
+    
     nonisolated func audioPlayerDecodeErrorDidOccur(_ player: AVAudioPlayer, error: Error?) {
         Task { @MainActor in
             print("Decode error: \(String(describing: error))")
-            self.isPlaying = false
-            self.stopTasks()
-            self.errorMessage = "Wiedergabefehler"
-            self.showError = true
+            // Graceful Degradation: Skip corrupt file automatically
+            if self.skipCount < self.maxSkips {
+                self.skipCount += 1
+                try? await Task.sleep(nanoseconds: 500_000_000)
+                self.nextTrack()
+            } else {
+                self.isPlaying = false
+                self.stopTasks()
+                self.errorMessage = "Wiedergabefehler: Datei beschädigt."
+                self.showError = true
+            }
         }
     }
     
