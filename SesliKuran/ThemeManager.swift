@@ -2,14 +2,27 @@
 import SwiftUI
 
 // MARK: - Theme Manager
+@MainActor
 class ThemeManager: ObservableObject {
-    @Published var isDarkMode: Bool {
+    private var isLoading = true
+
+    @Published var isDarkMode: Bool = true {
         didSet {
-            UserDefaults.standard.set(isDarkMode, forKey: "isDarkMode")
+            guard !isLoading else { return }
+            // Update Persistence asynchronously
+            Task {
+                await PersistenceManager.shared.updateTheme(isDarkMode: isDarkMode)
+            }
         }
     }
     
     init() {
-        self.isDarkMode = UserDefaults.standard.bool(forKey: "isDarkMode")
+        Task {
+            let savedMode = await PersistenceManager.shared.getIsDarkMode()
+            // Set property without triggering save logic if we handle logic carefully,
+            // but didSet fires anyway. So we use the flag.
+            self.isDarkMode = savedMode
+            self.isLoading = false
+        }
     }
 }
