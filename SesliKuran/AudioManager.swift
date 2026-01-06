@@ -1,304 +1,519 @@
-// MARK: - Imports
-import Foundation
+import SwiftUI
 import AVFoundation
 import MediaPlayer
 
-// MARK: - Audio Manager Class
+// MARK: - Audio Manager (Mission Critical & Zero-Maintenance)
+// Architecture: @MainActor isolated for UI safety, NSObject for Delegate conformance.
+// Stability: Uses structured concurrency (Tasks) instead of legacy Timers to prevent run-loop crashes.
 @MainActor
-class AudioManager: ObservableObject {
-    // MARK: - Published Properties
-    @Published var audioPlayer: AVAudioPlayer?
-    @Published var isPlaying = false
+class AudioManager: NSObject, ObservableObject, AVAudioPlayerDelegate {
+
+    // MARK: - Published State (UI Drivers)
+    @Published var isPlaying: Bool = false
     @Published var currentTime: TimeInterval = 0
     @Published var duration: TimeInterval = 0
     @Published var selectedTrack: Surah?
-    @Published var isLoading = false
     @Published var playbackRate: Float = 1.0
-    @Published var lastPlayedPositions: [String: TimeInterval] = [:]
-    @Published var showError = false
-    @Published var errorMessage = ""
+    // REMOVED: isDarkMode (Handled by ThemeManager)
+    @Published var errorMessage: String?
+    @Published var showError: Bool = false
+    @Published var isLoading: Bool = false
+
+    // MARK: - Internal Components
+    private var audioPlayer: AVAudioPlayer?
+
+    // Concurrency: Use Tasks instead of Timer for robust lifecycle management
+    private var progressTask: Task<Void, Never>?
+    private var heartbeatTask: Task<Void, Never>?
+
+    // Retry Logic (Self-Healing)
+    private var skipCount: Int = 0
+    private let maxSkips: Int = 3
     
-    // MARK: - Private Properties
-    private var timer: Timer?
-    // Using SurahData.allSurahs now
+    // Sleep Timer
+    @Published var sleepTimerTimeRemaining: TimeInterval = 0
+    @Published var isSleepTimerActive: Bool = false
+    private var sleepTimerTask: Task<Void, Never>?
     
     // MARK: - Initialization
-    init() {
-        setupAudioSession()
-        setupRemoteControls()
-        loadLastPlayedPositions()
+    override init() {
+        super.init() // Required for NSObject
+        setupSession()
+        setupRemoteCommandCenter()
+        setupNotifications()
+
+        // Initial State Load (Synchronous)
+        // CRITICAL: Must be loaded before UI renders to avoid 'nil' crash on unwraps.
+        loadInitialStateSync()
     }
     
-    // MARK: - Audio Session Setup
-    private func setupAudioSession() {
-        do {
-            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio)
-            try AVAudioSession.sharedInstance().setActive(true)
-            UIApplication.shared.beginReceivingRemoteControlEvents()
+    private func loadInitialStateSync() {
+        // Load Settings Synchronously
+        let settings = PersistenceManager.shared.loadSynchronously()
 
-            NotificationCenter.default.addObserver(self,
-                                                 selector: #selector(handleInterruption),
-                                                 name: AVAudioSession.interruptionNotification,
-                                                 object: nil)
-        } catch {
-            print("Audio Session Fehler: \(error)")
-        }
+        self.playbackRate = settings.playbackSpeed
+
+        // Load Last Active Track (Default to 1 if none)
+        let lastID = settings.lastActiveTrackID
+        let lastTrack = SurahData.allSurahs.first(where: { $0.id == lastID }) ?? SurahData.allSurahs[0]
+
+        // Prepare the player without auto-playing
+        // Note: loadAudio is safe to call here as we are on MainActor and it sets state.
+        self.loadAudio(track: lastTrack, autoPlay: false)
     }
-    
-    // MARK: - Interruption Handling
-    @objc private func handleInterruption(notification: Notification) {
-        guard let userInfo = notification.userInfo,
-              let typeValue = userInfo[AVAudioSessionInterruptionTypeKey] as? UInt,
-              let type = AVAudioSession.InterruptionType(rawValue: typeValue) else {
-            return
-        }
 
-        if type == .began {
-            if isPlaying {
-                audioPlayer?.pause()
-                isPlaying = false
-                timer?.invalidate()
-            }
-        } else if type == .ended {
-            if let optionsValue = userInfo[AVAudioSessionInterruptionOptionKey] as? UInt {
-                let options = AVAudioSession.InterruptionOptions(rawValue: optionsValue)
-                if options.contains(.shouldResume) {
-                    audioPlayer?.play()
-                    isPlaying = true
-                    setupTimer()
+    // MARK: - Session Configuration (Crash-Proof)
+    private func setupSession() {
+        // Robust Retry Logic for Audio Session Activation
+        // This is crucial for "Crash-Proof" operation if the OS audio daemon is busy.
+        var attempt = 0
+        let maxAttempts = 3
+        var success = false
+
+        while !success && attempt < maxAttempts {
+            do {
+                let session = AVAudioSession.sharedInstance()
+                try session.setCategory(.playback, mode: .spokenAudio, options: [.allowBluetooth, .allowBluetoothA2DP])
+                try session.setActive(true)
+                success = true
+            } catch {
+                attempt += 1
+                print("CRITICAL: Failed to setup audio session (Attempt \(attempt)): \(error)")
+                if attempt < maxAttempts {
+                    // Sync sleep on background setup? No, this runs in init on MainActor.
+                    // We can't block. We just log and hope subsequent plays trigger reactivation or user is alerted later.
+                    // Ideally we would wait, but blocking MainThread is bad.
+                    // Best we can do is try-catch blocks.
                 }
             }
         }
     }
+    
+    // MARK: - Core Playback Logic
+    func loadAudio(track: Surah, autoPlay: Bool = true) {
+        // Safe Cleanup
+        stopPlayback()
 
-    // MARK: - Remote Controls Setup
-    private func setupRemoteControls() {
-        let commandCenter = MPRemoteCommandCenter.shared()
+        self.selectedTrack = track
+        self.isLoading = true
+        self.errorMessage = nil
+        self.showError = false
+
+        let filename = "Audio \(track.id)"
+
+        // Robust File Resolution Strategy
+        // 1. Check Bundle (ReadOnly, Built-in)
+        var fileURL = Bundle.main.url(forResource: filename, withExtension: "mp3")
+
+        // 2. Check Documents (User Imported via iTunes/Finder)
+        if fileURL == nil {
+            if let docDir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {
+                let docURL = docDir.appendingPathComponent("\(filename).mp3")
+                if FileManager.default.fileExists(atPath: docURL.path) {
+                    fileURL = docURL
+                }
+            }
+        }
+
+        guard let validURL = fileURL else {
+            handleLoadError(error: .fileNotFound(filename))
+            return
+        }
+
+        // Attempt Load
+        do {
+            audioPlayer = try AVAudioPlayer(contentsOf: validURL)
+            audioPlayer?.delegate = self // NOW VALID due to NSObject conformance
+            audioPlayer?.enableRate = true
+            audioPlayer?.rate = playbackRate
+            audioPlayer?.prepareToPlay()
+
+            duration = audioPlayer?.duration ?? 0
+
+            // Restore Position
+            Task {
+                let savedTime = await PersistenceManager.shared.getLastPosition(for: track.id)
+
+                // Ensure UI updates happen on MainActor (guaranteed by class annotation)
+                self.currentTime = savedTime
+                self.audioPlayer?.currentTime = savedTime
+
+                if autoPlay {
+                    self.play()
+                } else {
+                    self.updateNowPlayingInfo()
+                }
+
+                self.isLoading = false
+                self.skipCount = 0 // Reset error counter on success
+            }
+
+        } catch {
+            handleLoadError(error: .fileCorrupt)
+        }
+    }
+
+    func play() {
+        guard let player = audioPlayer else { return }
+        player.play()
+        isPlaying = true
+        startTasks()
+        updateNowPlayingInfo()
+    }
+
+    func pause() {
+        audioPlayer?.pause()
+        isPlaying = false
+        stopTasks() // Conserves resources
+        updateNowPlayingInfo()
         
-        // Play/Pause
+        // Save immediately on pause
+        saveCurrentPosition()
+    }
+
+    func togglePlayPause() {
+        isPlaying ? pause() : play()
+        triggerHaptic()
+    }
+
+    private func stopPlayback() {
+        audioPlayer?.stop()
+        isPlaying = false
+        stopTasks()
+        // Do not nil out audioPlayer immediately if we want to keep metadata,
+        // but here we are usually loading a new one.
+    }
+
+    // MARK: - Task Management (Modern "Timers")
+    private func startTasks() {
+        // Cancel existing to prevent duplicates
+        stopTasks()
+        
+        // 1. UI Progress Update (High Frequency)
+        progressTask = Task {
+            while !Task.isCancelled {
+                if let player = self.audioPlayer, player.isPlaying {
+                    self.currentTime = player.currentTime
+                    // No need to update NowPlayingInfo every 0.1s, strictly UI binding
+                }
+                // Sleep 0.1s (100ms)
+                try? await Task.sleep(nanoseconds: 100_000_000)
+            }
+        }
+        
+        // 2. Persistence Heartbeat (Low Frequency)
+        heartbeatTask = Task {
+            while !Task.isCancelled {
+                // Sleep 15s
+                try? await Task.sleep(nanoseconds: 15_000_000_000)
+                self.saveCurrentPosition()
+            }
+        }
+    }
+
+    private func stopTasks() {
+        progressTask?.cancel()
+        progressTask = nil
+        heartbeatTask?.cancel()
+        heartbeatTask = nil
+    }
+
+    // MARK: - Persistence
+    func saveCurrentPosition() {
+        guard let track = selectedTrack else { return }
+        let currentPos = currentTime
+        let rate = playbackRate
+        
+        Task {
+            // Fire and forget safe save
+            await PersistenceManager.shared.updateLastPlayedPosition(trackId: track.id, time: currentPos)
+            await PersistenceManager.shared.updatePlaybackSpeed(rate)
+            // Note: Theme is handled by ThemeManager
+        }
+    }
+
+    // MARK: - Navigation
+    func nextTrack() {
+        guard let current = selectedTrack else { return }
+        let nextId = current.id + 1
+        // CORRECTED: Use SurahData.allSurahs
+        if let nextSurah = SurahData.allSurahs.first(where: { $0.id == nextId }) {
+            loadAudio(track: nextSurah, autoPlay: true)
+        } else {
+            // End of Playlist: Loop to start or stop?
+            // Standard behavior: Stop or Loop to 1. Let's loop to 1 for continuous play if desired,
+            // or just stop. Given "Zero-Maintenance", stopping is safer than infinite loops.
+            // But user might want continuous. Let's Stop.
+            isPlaying = false
+            stopTasks()
+        }
+    }
+    
+    func previousTrack() {
+        guard let current = selectedTrack else { return }
+        
+        // If played more than 3 seconds, restart track
+        if currentTime > 3 {
+            seek(to: 0)
+            return
+        }
+        
+        let prevId = current.id - 1
+        // CORRECTED: Use SurahData.allSurahs
+        if let prevSurah = SurahData.allSurahs.first(where: { $0.id == prevId }) {
+            loadAudio(track: prevSurah, autoPlay: true)
+        }
+    }
+    
+    func seek(to time: TimeInterval) {
+        guard let player = audioPlayer else { return }
+        let newTime = max(0, min(time, duration))
+        player.currentTime = newTime
+        currentTime = newTime
+        updateNowPlayingInfo()
+    }
+    
+    func skipForward() {
+        seek(to: currentTime + 30)
+    }
+
+    func skipBackward() {
+        seek(to: currentTime - 15)
+    }
+
+    func setPlaybackSpeed(_ speed: Float) {
+        playbackRate = speed
+        audioPlayer?.rate = speed
+        saveCurrentPosition() // Save preference
+    }
+    
+    // MARK: - Error Handling
+    private func handleLoadError(error: AppError) {
+        print("AudioManager Error: \(error.localizedDescription)")
+
+        // Self-Healing: Attempt to skip to next track if one fails
+        if skipCount < maxSkips {
+            skipCount += 1
+            // Use Task.sleep for delay
+            Task {
+                try? await Task.sleep(nanoseconds: 500_000_000) // 0.5s
+                self.nextTrack()
+            }
+        } else {
+            // Give up
+            self.isLoading = false
+            self.isPlaying = false
+            self.errorMessage = error.localizedDescription
+            self.showError = true
+            stopTasks()
+        }
+    }
+    
+    // MARK: - Sleep Timer
+    func startSleepTimer(minutes: Double) {
+        stopSleepTimer()
+        let seconds = minutes * 60
+        sleepTimerTimeRemaining = seconds
+        isSleepTimerActive = true
+
+        sleepTimerTask = Task {
+            while sleepTimerTimeRemaining > 0 {
+                if Task.isCancelled { return }
+                try? await Task.sleep(nanoseconds: 1_000_000_000) // 1s
+                sleepTimerTimeRemaining -= 1
+            }
+            // Timer Finished
+            self.pause()
+            self.isSleepTimerActive = false
+        }
+    }
+    
+    func stopSleepTimer() {
+        sleepTimerTask?.cancel()
+        sleepTimerTask = nil
+        isSleepTimerActive = false
+        sleepTimerTimeRemaining = 0
+    }
+    
+    // MARK: - Haptics
+    private func triggerHaptic() {
+        let generator = UIImpactFeedbackGenerator(style: .medium)
+        generator.impactOccurred()
+    }
+
+    // MARK: - Remote Command Center (Lock Screen)
+    private func setupRemoteCommandCenter() {
+        let commandCenter = MPRemoteCommandCenter.shared()
+
         commandCenter.playCommand.addTarget { [weak self] _ in
-            self?.playPause()
+            Task { @MainActor in self?.play() }
             return .success
         }
         
         commandCenter.pauseCommand.addTarget { [weak self] _ in
-            self?.playPause()
+            Task { @MainActor in self?.pause() }
             return .success
         }
-        
-        // Vor/Zurück
+
         commandCenter.nextTrackCommand.addTarget { [weak self] _ in
-            self?.nextTrack()
+            Task { @MainActor in self?.nextTrack() }
             return .success
         }
-        
+
         commandCenter.previousTrackCommand.addTarget { [weak self] _ in
-            self?.previousTrack()
+            Task { @MainActor in self?.previousTrack() }
             return .success
         }
-        
-        // Wiedergabegeschwindigkeit
-        commandCenter.changePlaybackRateCommand.isEnabled = true
-        commandCenter.changePlaybackRateCommand.supportedPlaybackRates = [0.5, 1.0, 1.5, 2.0]
-        commandCenter.changePlaybackRateCommand.addTarget { [weak self] event in
-            guard let self = self,
-                  let rateCommand = event as? MPChangePlaybackRateCommandEvent else { return .commandFailed }
-            self.setPlaybackSpeed(rateCommand.playbackRate)
+
+        commandCenter.skipForwardCommand.preferredIntervals = [30]
+        commandCenter.skipForwardCommand.addTarget { [weak self] _ in
+            Task { @MainActor in self?.skipForward() }
+            return .success
+        }
+
+        commandCenter.skipBackwardCommand.preferredIntervals = [15]
+        commandCenter.skipBackwardCommand.addTarget { [weak self] _ in
+            Task { @MainActor in self?.skipBackward() }
+            return .success
+        }
+
+        commandCenter.changePlaybackPositionCommand.addTarget { [weak self] event in
+            guard let self = self, let event = event as? MPChangePlaybackPositionCommandEvent else { return .commandFailed }
+            Task { @MainActor in self.seek(to: event.positionTime) }
             return .success
         }
     }
     
-    // MARK: - Update Now Playing Info
     private func updateNowPlayingInfo() {
+        guard let track = selectedTrack else {
+            MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
+            return
+        }
+        
         var nowPlayingInfo = [String: Any]()
-        
-        nowPlayingInfo[MPMediaItemPropertyTitle] = selectedTrack?.name ?? "Kein Titel"
-        nowPlayingInfo[MPNowPlayingInfoPropertyElapsedPlaybackTime] = currentTime
+        nowPlayingInfo[MPMediaItemPropertyTitle] = track.name
+        nowPlayingInfo[MPMediaItemPropertyArtist] = track.germanName
         nowPlayingInfo[MPMediaItemPropertyPlaybackDuration] = duration
+        nowPlayingInfo[MPNowPlayingInfoPropertyElapsedPlaybackTime] = currentTime
         nowPlayingInfo[MPNowPlayingInfoPropertyPlaybackRate] = isPlaying ? playbackRate : 0.0
-        
+
+        // Add Artwork if we had it. For now text only.
+
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nowPlayingInfo
     }
     
-    // MARK: - Playback Controls
-    func playPause() {
-        guard let player = audioPlayer else { return }
+    // MARK: - Notifications (Interruption & Lifecycle Handling)
+    private func setupNotifications() {
+        let center = NotificationCenter.default
         
-        if player.isPlaying {
-            player.pause()
-            timer?.invalidate()
-            saveCurrentPosition()
-        } else {
-            player.play()
-            setupTimer()
-        }
-        isPlaying = player.isPlaying
-        updateNowPlayingInfo()
-    }
-    
-    func setPlaybackSpeed(_ speed: Float) {
-        audioPlayer?.rate = speed
-        playbackRate = speed
-        updateNowPlayingInfo()
-    }
-    
-    // MARK: - Position Management
-    private func saveCurrentPosition() {
-        guard let track = selectedTrack else { return }
-        let key = "Audio \(track.id)"
-        lastPlayedPositions[key] = currentTime
-        saveLastPlayedPositions()
-    }
-    
-    private func loadLastPlayedPositions() {
-        if let saved = UserDefaults.standard.dictionary(forKey: "LastPlayedPositions") as? [String: TimeInterval] {
-            lastPlayedPositions = saved
-        }
-    }
-    
-    private func saveLastPlayedPositions() {
-        UserDefaults.standard.set(lastPlayedPositions, forKey: "LastPlayedPositions")
-    }
-    
-    // MARK: - Navigation Controls
-    func nextTrack() {
-        saveCurrentPosition()
-        isLoading = true
-        guard let currentTrack = selectedTrack else {
-            isLoading = false
-            return
-        }
-        
-        let currentIndex = currentTrack.id - 1
-        let nextIndex = (currentIndex + 1) % SurahData.allSurahs.count
-        selectedTrack = SurahData.allSurahs[nextIndex]
-        loadAudio(track: selectedTrack!)
-    }
-    
-    func previousTrack() {
-        saveCurrentPosition()
-        isLoading = true
-        guard let currentTrack = selectedTrack else {
-            isLoading = false
-            return
-        }
-        
-        let currentIndex = currentTrack.id - 1
-        let previousIndex = (currentIndex - 1 + SurahData.allSurahs.count) % SurahData.allSurahs.count
-        selectedTrack = SurahData.allSurahs[previousIndex]
-        loadAudio(track: selectedTrack!)
-    }
-    
-    // MARK: - Audio Loading
-    func loadAudio(track: Surah) {
-        isLoading = true
-        selectedTrack = track // Ensure selectedTrack is set
+        // Interruption
+        center.addObserver(self,
+                           selector: #selector(handleInterruption),
+                           name: AVAudioSession.interruptionNotification,
+                           object: nil)
 
-        let filename = "Audio \(track.id)"
-        var url: URL?
-        
-        // 1. Check Bundle
-        if let bundleUrl = Bundle.main.url(forResource: filename, withExtension: "mp3") {
-            url = bundleUrl
-        } else {
-            // 2. Check Documents Directory
-            let fileManager = FileManager.default
-            if let documentDirectory = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first {
-                let documentUrl = documentDirectory.appendingPathComponent("\(filename).mp3")
-                if fileManager.fileExists(atPath: documentUrl.path) {
-                    url = documentUrl
-                }
-            }
-        }
+        // Lifecycle (App Background/Termination)
+        // Ensure data is saved when app goes to background
+        center.addObserver(self,
+                           selector: #selector(handleAppBackground),
+                           name: UIApplication.didEnterBackgroundNotification,
+                           object: nil)
 
-        guard let validUrl = url else {
-            print("Audio file nicht gefunden: \(filename).mp3")
+        center.addObserver(self,
+                           selector: #selector(handleAppBackground),
+                           name: UIApplication.willTerminateNotification,
+                           object: nil)
+    }
 
-            // Stop current playback if it exists
-            if let player = audioPlayer, player.isPlaying {
-                player.stop()
-            }
-            isPlaying = false
-            timer?.invalidate()
+    @objc private func handleAppBackground() {
+        // Force save immediately using Background Task to ensure completion
+        let app = UIApplication.shared
+        var bgTask: UIBackgroundTaskIdentifier = .invalid
 
-            self.errorMessage = "Die Audiodatei 'Audio \(track.id).mp3' für '\(track.name)' wurde nicht gefunden. Bitte fügen Sie die Datei über iTunes File Sharing hinzu oder integrieren Sie sie in das Bundle. (Siehe Anleitung)"
-            self.showError = true
-            isLoading = false
-            return
+        bgTask = app.beginBackgroundTask {
+            app.endBackgroundTask(bgTask)
         }
         
-        do {
-            audioPlayer = try AVAudioPlayer(contentsOf: validUrl)
-            audioPlayer?.prepareToPlay()
-            audioPlayer?.rate = playbackRate
-            duration = audioPlayer?.duration ?? 0
+        Task { @MainActor in
+            self.saveCurrentPosition()
             
-            let key = "Audio \(track.id)"
-            if let lastPosition = lastPlayedPositions[key] {
-                audioPlayer?.currentTime = lastPosition
-                currentTime = lastPosition
+            // Allow a small window for the async save to propagate to disk (Queue dispatch)
+            // Ideally we'd await the persistence, but saveCurrentPosition is fire-and-forget.
+            // We trust the PersistenceManager's queue priority.
+            try? await Task.sleep(nanoseconds: 200_000_000) // 0.2s buffer
+            
+            app.endBackgroundTask(bgTask)
+        }
+    }
+    
+    @objc private func handleInterruption(notification: Notification) {
+        guard let userInfo = notification.userInfo,
+              let typeValue = userInfo[AVAudioSessionInterruptionTypeKey] as? UInt,
+              let type = AVAudioSession.InterruptionType(rawValue: typeValue) else { return }
+
+        Task { @MainActor in
+            switch type {
+            case .began:
+                self.pause()
+            case .ended:
+                if let optionsValue = userInfo[AVAudioSessionInterruptionOptionKey] as? UInt {
+                    let options = AVAudioSession.InterruptionOptions(rawValue: optionsValue)
+                    if options.contains(.shouldResume) {
+                        self.play()
+                    }
+                }
+            @unknown default:
+                break
+            }
+        }
+    }
+    
+    // MARK: - AVAudioPlayerDelegate
+    // This method is called by the system on a background thread usually, or main thread.
+    // We mark it 'nonisolated' so it satisfies the protocol requirements without assuming MainActor.
+    // Then we Task { @MainActor } to safely update state.
+    nonisolated func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
+        Task { @MainActor in
+            if flag {
+                self.nextTrack()
             } else {
-                currentTime = 0
-            }
-            
-            audioPlayer?.play()
-            isPlaying = true
-            setupTimer()
-            updateNowPlayingInfo()
-            
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                self.isLoading = false
-            }
-        } catch {
-            print("Fehler beim Laden der Audiodatei: \(error)")
-            isLoading = false
-        }
-    }
-    
-    // MARK: - Seek Control
-    func seek(to time: TimeInterval) {
-        audioPlayer?.currentTime = time
-        currentTime = time
-        updateNowPlayingInfo()
-    }
-    
-    // MARK: - Timer Setup
-    private func setupTimer() {
-        timer?.invalidate()
-        timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
-            guard let self = self, let player = self.audioPlayer else { return }
-            self.currentTime = player.currentTime
-            self.updateNowPlayingInfo()
-        }
-    }
-    
-    // MARK: - Cleanup
-    func cleanupUnusedAudioFiles() {
-        let fileManager = FileManager.default
-        guard let documentsDirectory = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else { return }
-        
-        do {
-            let fileURLs = try fileManager.contentsOfDirectory(at: documentsDirectory, includingPropertiesForKeys: nil)
-            let audioFileURLs = fileURLs.filter { $0.pathExtension == "mp3" }
-            
-            let validFilenames = Set(SurahData.allSurahs.map { "Audio \($0.id).mp3" })
-
-            for fileURL in audioFileURLs {
-                let fileName = fileURL.lastPathComponent
-                if !validFilenames.contains(fileName) {
-                    try fileManager.removeItem(at: fileURL)
-                    print("Gelöschte unbenutzte Audiodatei: \(fileName)")
+                // Playback finished but failed?
+                // Self-Healing: Treat as corrupt end, skip to next.
+                print("Audio finished unsuccessfully. Attempting skip.")
+                if self.skipCount < self.maxSkips {
+                    self.skipCount += 1
+                    self.nextTrack()
+                } else {
+                    self.isPlaying = false
+                    self.stopTasks()
                 }
             }
-        } catch {
-            print("Fehler beim Bereinigen unbenutzter Audiodateien: \(error)")
+        }
+    }
+    
+    nonisolated func audioPlayerDecodeErrorDidOccur(_ player: AVAudioPlayer, error: Error?) {
+        Task { @MainActor in
+            print("Decode error: \(String(describing: error))")
+            // Graceful Degradation: Skip corrupt file automatically
+            if self.skipCount < self.maxSkips {
+                self.skipCount += 1
+                try? await Task.sleep(nanoseconds: 500_000_000)
+                self.nextTrack()
+            } else {
+                self.isPlaying = false
+                self.stopTasks()
+                self.errorMessage = "Wiedergabefehler: Datei beschädigt."
+                self.showError = true
+            }
         }
     }
     
     deinit {
-        saveCurrentPosition()
-        timer?.invalidate()
-        UIApplication.shared.endReceivingRemoteControlEvents()
-        cleanupUnusedAudioFiles()
+        // Even though Tasks cancel automatically if stored in properties when the class dies,
+        // it's good practice to be explicit.
+        progressTask?.cancel()
+        heartbeatTask?.cancel()
+        sleepTimerTask?.cancel()
+        NotificationCenter.default.removeObserver(self)
     }
 }

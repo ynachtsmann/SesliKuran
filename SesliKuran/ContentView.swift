@@ -70,7 +70,7 @@ struct ContentView: View {
             .alert(isPresented: $audioManager.showError) {
                 Alert(
                     title: Text("Fehler"),
-                    message: Text(audioManager.errorMessage),
+                    message: Text(audioManager.errorMessage ?? "Unbekannter Fehler"),
                     dismissButton: .default(Text("OK"))
                 )
             }
@@ -89,6 +89,8 @@ struct ContentView: View {
                 },
                 isDarkMode: themeManager.isDarkMode
             )
+            .accessibilityLabel("Liste anzeigen")
+            .accessibilityHint("Zeigt die Liste aller Surahs an.")
             
             Spacer()
             
@@ -102,6 +104,7 @@ struct ContentView: View {
                 },
                 isDarkMode: themeManager.isDarkMode
             )
+            .accessibilityLabel(themeManager.isDarkMode ? "In den hellen Modus wechseln" : "In den dunklen Modus wechseln")
         }
     }
     
@@ -210,13 +213,15 @@ struct ContentView: View {
                     .font(.title2)
                     .foregroundColor(themeManager.isDarkMode ? .white : .black.opacity(0.7))
             }
+            .accessibilityLabel("Vorherige Surah")
             
             GlassyControlButton(
                 iconName: audioManager.isPlaying ? "pause.fill" : "play.fill",
-                action: { audioManager.playPause() },
+                action: { audioManager.togglePlayPause() }, // FIX: renamed playPause to togglePlayPause
                 size: 35,
                 isDarkMode: themeManager.isDarkMode
             )
+            .accessibilityLabel(audioManager.isPlaying ? "Pause" : "Wiedergabe")
             
             Button(action: {
                 audioManager.nextTrack()
@@ -225,6 +230,7 @@ struct ContentView: View {
                     .font(.title2)
                     .foregroundColor(themeManager.isDarkMode ? .white : .black.opacity(0.7))
             }
+            .accessibilityLabel("Nächste Surah")
         }
         .padding(.vertical, 20)
         .padding(.horizontal, 40)
