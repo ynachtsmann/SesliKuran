@@ -182,6 +182,10 @@ actor PersistenceManager {
             let encoded = try JSONEncoder().encode(data)
 
             // 1. Write to temp file (Atomic)
+            // .atomic write already creates a temp file and renames it, but doing it manually
+            // gives us explicit control if needed. However, standard .atomic is sufficient.
+            // But to be absolutely "Mission Critical", we use the Manual Temp + Replace approach
+            // to ensure no half-written files exist at the final URL.
             try encoded.write(to: tempUrl, options: [.atomic, .completeFileProtection])
 
             // 2. Atomic Swap (Safe Replace)
@@ -191,6 +195,8 @@ actor PersistenceManager {
                 try FileManager.default.moveItem(at: tempUrl, to: url)
             }
         } catch {
+            // Silent Fail / Graceful Degradation
+            // We log for debugging, but we do not crash or show alerts.
             print("Persistence: Critical Save Error: \(error)")
         }
     }

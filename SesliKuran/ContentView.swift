@@ -153,6 +153,7 @@ struct ContentView: View {
             .padding(.bottom, 20)
             
             // Text Info
+            // Defensive Coding: Handle nil selectedTrack gracefully
             if let selectedTrack = audioManager.selectedTrack {
                 VStack(spacing: 8) {
                     Text("\(selectedTrack.name) - \(selectedTrack.germanName)")
@@ -167,10 +168,17 @@ struct ContentView: View {
                         .foregroundColor(themeManager.isDarkMode ? .white.opacity(0.8) : .gray)
                 }
             } else {
-                Text("Wähle eine Surah")
-                    .font(.title2)
-                    .fontWeight(.semibold)
-                    .foregroundColor(themeManager.isDarkMode ? .white.opacity(0.8) : .gray)
+                // Placeholder State - Never Crash
+                VStack(spacing: 8) {
+                    Text("Wähle eine Surah")
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                        .foregroundColor(themeManager.isDarkMode ? .white.opacity(0.8) : .gray)
+
+                    Text("---")
+                        .font(.title3)
+                        .foregroundColor(themeManager.isDarkMode ? .white.opacity(0.5) : .gray.opacity(0.5))
+                }
             }
             
             // Slider

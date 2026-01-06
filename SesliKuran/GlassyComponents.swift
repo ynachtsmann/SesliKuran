@@ -124,6 +124,10 @@ struct NeumorphicSlider: View {
                     .frame(height: 6)
 
                 // Progress
+                // Defensive: Guard against Division by Zero
+                let rangeDistance = inRange.upperBound - inRange.lowerBound
+                let progress = rangeDistance > 0 ? CGFloat((value - inRange.lowerBound) / rangeDistance) : 0
+
                 Capsule()
                     .fill(
                         LinearGradient(
@@ -132,7 +136,7 @@ struct NeumorphicSlider: View {
                             endPoint: .trailing
                         )
                     )
-                    .frame(width: geometry.size.width * CGFloat((value - inRange.lowerBound) / (inRange.upperBound - inRange.lowerBound)), height: 6)
+                    .frame(width: geometry.size.width * progress, height: 6)
             }
             .frame(height: 44) // Ensure visual center alignment
             .contentShape(Rectangle()) // Make the whole area tappable
@@ -146,12 +150,16 @@ struct NeumorphicSlider: View {
         // Visible custom knob
         .overlay(
              GeometryReader { geometry in
+                 // Defensive: Guard against Division by Zero
+                 let rangeDistance = inRange.upperBound - inRange.lowerBound
+                 let progress = rangeDistance > 0 ? CGFloat((value - inRange.lowerBound) / rangeDistance) : 0
+
                  Circle()
                      .fill(Color.white)
                      .frame(width: 16, height: 16)
                      .shadow(radius: 4)
                      .position(
-                        x: geometry.size.width * CGFloat((value - inRange.lowerBound) / (inRange.upperBound - inRange.lowerBound)),
+                        x: geometry.size.width * progress,
                         y: geometry.size.height / 2
                      )
                      .allowsHitTesting(false) // Let touches pass to the slider

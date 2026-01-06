@@ -70,20 +70,23 @@ class AudioManager: NSObject, ObservableObject, AVAudioPlayerDelegate {
         let maxAttempts = 3
         var success = false
 
+        // Use A2DP for high quality audio, avoiding low-quality HFP (standard Bluetooth)
+        let options: AVAudioSession.CategoryOptions = [.allowBluetoothA2DP]
+
         while !success && attempt < maxAttempts {
             do {
                 let session = AVAudioSession.sharedInstance()
-                try session.setCategory(.playback, mode: .spokenAudio, options: [.allowBluetooth, .allowBluetoothA2DP])
+                try session.setCategory(.playback, mode: .spokenAudio, options: options)
                 try session.setActive(true)
                 success = true
             } catch {
                 attempt += 1
                 print("CRITICAL: Failed to setup audio session (Attempt \(attempt)): \(error)")
                 if attempt < maxAttempts {
-                    // Sync sleep on background setup? No, this runs in init on MainActor.
-                    // We can't block. We just log and hope subsequent plays trigger reactivation or user is alerted later.
-                    // Ideally we would wait, but blocking MainThread is bad.
-                    // Best we can do is try-catch blocks.
+                    // We can't block the main thread with sleep.
+                    // Instead, we trust that a failure here might be recoverable later or
+                    // via the mediaServicesReset handler.
+                    // Logging is sufficient for "Silent" degradation.
                 }
             }
         }
@@ -349,7 +352,7 @@ class AudioManager: NSObject, ObservableObject, AVAudioPlayerDelegate {
             Task { @MainActor in self?.play() }
             return .success
         }
-        
+
         commandCenter.pauseCommand.addTarget { [weak self] _ in
             Task { @MainActor in self?.pause() }
             return .success
@@ -412,6 +415,12 @@ class AudioManager: NSObject, ObservableObject, AVAudioPlayerDelegate {
                            name: AVAudioSession.interruptionNotification,
                            object: nil)
 
+        // Media Services Reset (Daemon Crash Recovery) - The 0.01% Scenario
+        center.addObserver(self,
+                           selector: #selector(handleMediaServicesReset),
+                           name: AVAudioSession.mediaServicesWereResetNotification,
+                           object: nil)
+
         // Lifecycle (App Background/Termination)
         // Ensure data is saved when app goes to background
         center.addObserver(self,
@@ -425,24 +434,55 @@ class AudioManager: NSObject, ObservableObject, AVAudioPlayerDelegate {
                            object: nil)
     }
 
+    @objc private func handleMediaServicesReset(notification: Notification) {
+        // Full Reset of Audio Stack
+        print("CRITICAL: Media Services Reset Detected. Rebuilding Audio Stack...")
+
+        Task { @MainActor in
+            // 1. Tear down existing resources
+            self.stopPlayback()
+            self.audioPlayer = nil
+
+            // 2. Re-initialize Session
+            self.setupSession()
+            self.setupRemoteCommandCenter()
+
+            // 3. Restore State if possible
+            if let track = self.selectedTrack {
+                // Reload without auto-playing to prevent sudden blasting,
+                // or autoplay if it was playing?
+                // Safe bet: Reload and seek, let user press play.
+                self.loadAudio(track: track, autoPlay: false)
+
+                // If it was playing, maybe we can try to resume after a delay?
+                // For safety/Mission Critical, we prefer "Paused & Ready" over "Accidental Noise".
+            }
+        }
+    }
+
     @objc private func handleAppBackground() {
         // Force save immediately using Background Task to ensure completion
         let app = UIApplication.shared
         var bgTask: UIBackgroundTaskIdentifier = .invalid
 
+        // Ensure robust background task handling
         bgTask = app.beginBackgroundTask {
+            // Expiration Handler: Final safety net
             app.endBackgroundTask(bgTask)
+            bgTask = .invalid
         }
         
         Task { @MainActor in
             self.saveCurrentPosition()
             
             // Allow a small window for the async save to propagate to disk (Queue dispatch)
-            // Ideally we'd await the persistence, but saveCurrentPosition is fire-and-forget.
-            // We trust the PersistenceManager's queue priority.
+            // We use Task.sleep to yield control briefly.
             try? await Task.sleep(nanoseconds: 200_000_000) // 0.2s buffer
             
-            app.endBackgroundTask(bgTask)
+            if bgTask != .invalid {
+                app.endBackgroundTask(bgTask)
+                bgTask = .invalid
+            }
         }
     }
     
