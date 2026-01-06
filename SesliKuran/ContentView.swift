@@ -67,11 +67,10 @@ struct ContentView: View {
                 }
             }
             .navigationBarHidden(true)
-            // MARK: - Critical Error Alert (Blocking)
-            .alert(item: $audioManager.criticalError) { error in
+            .alert(isPresented: $audioManager.showError) {
                 Alert(
-                    title: Text("Kritischer Fehler"),
-                    message: Text(error.localizedDescription),
+                    title: Text("Fehler"),
+                    message: Text(audioManager.errorMessage ?? "Unbekannter Fehler"),
                     dismissButton: .default(Text("OK"))
                 )
             }
@@ -214,7 +213,7 @@ struct ContentView: View {
             
             GlassyControlButton(
                 iconName: audioManager.isPlaying ? "pause.fill" : "play.fill",
-                action: { audioManager.playPause() },
+                action: { audioManager.togglePlayPause() }, // FIX: renamed playPause to togglePlayPause
                 size: 35,
                 isDarkMode: themeManager.isDarkMode
             )
@@ -252,10 +251,6 @@ struct VisualEffectView: UIViewRepresentable {
     var effect: UIVisualEffect?
     func makeUIView(context: UIViewRepresentableContext<Self>) -> UIVisualEffectView { UIVisualEffectView() }
     func updateUIView(_ uiView: UIVisualEffectView, context: UIViewRepresentableContext<Self>) { uiView.effect = effect }
-}
-
-extension AppError: Identifiable {
-    var id: String { self.localizedDescription }
 }
 
 // MARK: - Preview
