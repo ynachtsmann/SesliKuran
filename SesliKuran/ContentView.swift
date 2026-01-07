@@ -44,7 +44,8 @@ struct ContentView: View {
                             // No background container here anymore - just the list
                             AudioListView(isShowing: $showSlotSelection) { selectedTrack in
                                 audioManager.selectedTrack = selectedTrack
-                                audioManager.loadAudio(track: selectedTrack)
+                                // MANUAL SELECTION: Always start from 0:00 (resumePlayback: false)
+                                audioManager.loadAudio(track: selectedTrack, autoPlay: true, resumePlayback: false)
                                 withAnimation(.easeInOut(duration: 0.3)) {
                                     showSlotSelection = false
                                 }

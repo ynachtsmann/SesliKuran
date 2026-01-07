@@ -59,7 +59,8 @@ class AudioManager: NSObject, ObservableObject, AVAudioPlayerDelegate {
 
         // Prepare the player without auto-playing
         // Note: loadAudio is safe to call here as we are on MainActor and it sets state.
-        self.loadAudio(track: lastTrack, autoPlay: false)
+        // APP LAUNCH: Resume from last saved position
+        self.loadAudio(track: lastTrack, autoPlay: false, resumePlayback: true)
     }
 
     // MARK: - Session Configuration (Crash-Proof)
@@ -93,9 +94,13 @@ class AudioManager: NSObject, ObservableObject, AVAudioPlayerDelegate {
     }
     
     // MARK: - Core Playback Logic
-    func loadAudio(track: Surah, autoPlay: Bool = true) {
+    func loadAudio(track: Surah, autoPlay: Bool = true, resumePlayback: Bool = false) {
         // Safe Cleanup
         stopPlayback()
+
+        // CRITICAL FIX: Explicitly unload the old player instance.
+        // If the new file is missing, we must NOT keep the old one in memory.
+        self.audioPlayer = nil
 
         self.selectedTrack = track
         self.isLoading = true
@@ -133,13 +138,21 @@ class AudioManager: NSObject, ObservableObject, AVAudioPlayerDelegate {
 
             duration = audioPlayer?.duration ?? 0
 
-            // Restore Position
+            // Restore Position Logic
             Task {
-                let savedTime = await PersistenceManager.shared.getLastPosition(for: track.id)
+                let initialTime: TimeInterval
+
+                if resumePlayback {
+                    // Restore from Persistence (App Launch)
+                    initialTime = await PersistenceManager.shared.getLastPosition(for: track.id)
+                } else {
+                    // Reset to 0 (Manual Selection / Next / Prev)
+                    initialTime = 0
+                }
 
                 // Ensure UI updates happen on MainActor (guaranteed by class annotation)
-                self.currentTime = savedTime
-                self.audioPlayer?.currentTime = savedTime
+                self.currentTime = initialTime
+                self.audioPlayer?.currentTime = initialTime
 
                 if autoPlay {
                     self.play()
@@ -241,7 +254,8 @@ class AudioManager: NSObject, ObservableObject, AVAudioPlayerDelegate {
         let nextId = current.id + 1
         // CORRECTED: Use SurahData.allSurahs
         if let nextSurah = SurahData.allSurahs.first(where: { $0.id == nextId }) {
-            loadAudio(track: nextSurah, autoPlay: true)
+            // USER NAVIGATION: Always start from 0:00
+            loadAudio(track: nextSurah, autoPlay: true, resumePlayback: false)
         } else {
             // End of Playlist: Loop to start or stop?
             // Standard behavior: Stop or Loop to 1. Let's loop to 1 for continuous play if desired,
@@ -264,7 +278,8 @@ class AudioManager: NSObject, ObservableObject, AVAudioPlayerDelegate {
         let prevId = current.id - 1
         // CORRECTED: Use SurahData.allSurahs
         if let prevSurah = SurahData.allSurahs.first(where: { $0.id == prevId }) {
-            loadAudio(track: prevSurah, autoPlay: true)
+            // USER NAVIGATION: Always start from 0:00
+            loadAudio(track: prevSurah, autoPlay: true, resumePlayback: false)
         }
     }
     
@@ -452,7 +467,8 @@ class AudioManager: NSObject, ObservableObject, AVAudioPlayerDelegate {
                 // Reload without auto-playing to prevent sudden blasting,
                 // or autoplay if it was playing?
                 // Safe bet: Reload and seek, let user press play.
-                self.loadAudio(track: track, autoPlay: false)
+                // RECOVERY: Attempt to resume position for continuity
+                self.loadAudio(track: track, autoPlay: false, resumePlayback: true)
 
                 // If it was playing, maybe we can try to resume after a delay?
                 // For safety/Mission Critical, we prefer "Paused & Ready" over "Accidental Noise".
