@@ -29,6 +29,10 @@ class AudioManager: NSObject, ObservableObject, AVAudioPlayerDelegate {
     // Retry Logic (Self-Healing)
     private var skipCount: Int = 0
     private let maxSkips: Int = 3
+
+    // Background Launch Protection (Ghost Audio Fix)
+    // Prevents auto-play when app is launched in background (e.g. by Car Bluetooth)
+    private var hasEnteredForeground: Bool = false
     
     // Sleep Timer
     @Published var sleepTimerTimeRemaining: TimeInterval = 0
@@ -364,7 +368,10 @@ class AudioManager: NSObject, ObservableObject, AVAudioPlayerDelegate {
         let commandCenter = MPRemoteCommandCenter.shared()
 
         commandCenter.playCommand.addTarget { [weak self] _ in
-            Task { @MainActor in self?.play() }
+            Task { @MainActor in
+                guard let self = self, self.hasEnteredForeground else { return }
+                self.play()
+            }
             return .success
         }
 
@@ -374,30 +381,45 @@ class AudioManager: NSObject, ObservableObject, AVAudioPlayerDelegate {
         }
 
         commandCenter.nextTrackCommand.addTarget { [weak self] _ in
-            Task { @MainActor in self?.nextTrack() }
+            Task { @MainActor in
+                guard let self = self, self.hasEnteredForeground else { return }
+                self.nextTrack()
+            }
             return .success
         }
 
         commandCenter.previousTrackCommand.addTarget { [weak self] _ in
-            Task { @MainActor in self?.previousTrack() }
+            Task { @MainActor in
+                guard let self = self, self.hasEnteredForeground else { return }
+                self.previousTrack()
+            }
             return .success
         }
 
         commandCenter.skipForwardCommand.preferredIntervals = [30]
         commandCenter.skipForwardCommand.addTarget { [weak self] _ in
-            Task { @MainActor in self?.skipForward() }
+            Task { @MainActor in
+                guard let self = self, self.hasEnteredForeground else { return }
+                self.skipForward()
+            }
             return .success
         }
 
         commandCenter.skipBackwardCommand.preferredIntervals = [15]
         commandCenter.skipBackwardCommand.addTarget { [weak self] _ in
-            Task { @MainActor in self?.skipBackward() }
+            Task { @MainActor in
+                guard let self = self, self.hasEnteredForeground else { return }
+                self.skipBackward()
+            }
             return .success
         }
 
         commandCenter.changePlaybackPositionCommand.addTarget { [weak self] event in
             guard let self = self, let event = event as? MPChangePlaybackPositionCommandEvent else { return .commandFailed }
-            Task { @MainActor in self.seek(to: event.positionTime) }
+            Task { @MainActor in
+                guard self.hasEnteredForeground else { return }
+                self.seek(to: event.positionTime)
+            }
             return .success
         }
     }
@@ -447,6 +469,18 @@ class AudioManager: NSObject, ObservableObject, AVAudioPlayerDelegate {
                            selector: #selector(handleAppBackground),
                            name: UIApplication.willTerminateNotification,
                            object: nil)
+
+        // Active State (Ghost Audio Fix)
+        center.addObserver(self,
+                           selector: #selector(handleAppDidBecomeActive),
+                           name: UIApplication.didBecomeActiveNotification,
+                           object: nil)
+    }
+
+    @objc private func handleAppDidBecomeActive() {
+        Task { @MainActor in
+            self.hasEnteredForeground = true
+        }
     }
 
     @objc private func handleMediaServicesReset(notification: Notification) {
