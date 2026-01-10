@@ -1,13 +1,13 @@
 import Foundation
 
-struct Surah: Identifiable, Hashable {
+struct Surah: Identifiable, Hashable, Sendable {
     let id: Int
     let name: String
     let arabicName: String
     let germanName: String
 }
 
-struct SurahData {
+enum SurahData {
     static let allSurahs: [Surah] = [
         Surah(id: 1, name: "al-Fātiḥa", arabicName: "الفاتحة", germanName: "Die Eröffnung"),
         Surah(id: 2, name: "al-Baqara", arabicName: "البقرة", germanName: "Die Kuh"),
@@ -124,4 +124,21 @@ struct SurahData {
         Surah(id: 113, name: "al-Falaq", arabicName: "الْفَلَقِ", germanName: "Das Frühlicht"),
         Surah(id: 114, name: "an-Nās", arabicName: "النَّاسِ", germanName: "Die Menschheit")
     ]
+
+    // Fallback: A dummy Surah that guarantees the app never crashes on missing data.
+    static let fallbackSurah = Surah(id: 1, name: "al-Fātiḥa", arabicName: "الفاتحة", germanName: "Die Eröffnung")
+
+    // O(1) Accessor for complex lookups (Future proofing)
+    static private let byId: [Int: Surah] = {
+        Dictionary(uniqueKeysWithValues: allSurahs.map { ($0.id, $0) })
+    }()
+
+    static func safeSurah(at index: Int) -> Surah {
+        guard index >= 0 && index < allSurahs.count else { return fallbackSurah }
+        return allSurahs[index]
+    }
+
+    static func getSurah(id: Int) -> Surah? {
+        return byId[id]
+    }
 }
