@@ -13,8 +13,8 @@ struct GlassyButton: View {
         Button(action: action) {
             Image(systemName: iconName)
                 .font(.system(size: size, weight: .bold))
-                // Use foregroundStyle if available in future, keeping foregroundColor for max compatibility
-                .foregroundColor(isDarkMode ? .white : Color(white: 0.3))
+                // Updated to foregroundStyle for modern iOS support
+                .foregroundStyle(isDarkMode ? .white : Color(white: 0.3))
                 .padding(padding)
                 .background(
                     ZStack {
@@ -70,7 +70,7 @@ struct GlassyControlButton: View {
 
                 Image(systemName: iconName)
                     .font(.system(size: size, weight: .bold))
-                    .foregroundColor(isDarkMode ? .white : .white) // Keep icon white for contrast on gradient
+                    .foregroundStyle(isDarkMode ? .white : .white) // Keep icon white for contrast on gradient
                     .frame(width: size * 2, height: size * 2)
                     .background(
                         LinearGradient(

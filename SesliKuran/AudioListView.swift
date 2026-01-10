@@ -18,7 +18,7 @@ struct AudioListView: View {
                 Text("Surah Liste")
                     .font(.title3)
                     .fontWeight(.bold)
-                    .foregroundColor(themeManager.isDarkMode ? .white : .black.opacity(0.8))
+                    .foregroundStyle(themeManager.isDarkMode ? .white : .black.opacity(0.8))
 
                 Spacer()
 
@@ -29,7 +29,7 @@ struct AudioListView: View {
                 }) {
                     Image(systemName: "xmark.circle.fill")
                         .font(.title2)
-                        .foregroundColor(themeManager.isDarkMode ? .white.opacity(0.8) : .gray)
+                        .foregroundStyle(themeManager.isDarkMode ? .white.opacity(0.8) : .gray)
                         .padding()
                 }
             }
@@ -56,7 +56,7 @@ struct AudioListView: View {
                                     .progressViewStyle(CircularProgressViewStyle(tint: themeManager.isDarkMode ? .white : .gray))
                             } else {
                                 Text("Weitere Kapitel laden")
-                                    .foregroundColor(themeManager.isDarkMode ? .white.opacity(0.7) : .blue)
+                                    .foregroundStyle(themeManager.isDarkMode ? .white.opacity(0.7) : .blue)
                                     .padding(.vertical, 10)
                             }
                         }
@@ -111,19 +111,19 @@ struct GlassyCardRow: View {
 
                     Text("\(surah.id)")
                         .font(.system(size: 16, weight: .bold))
-                        .foregroundColor(isDarkMode ? .white : .black.opacity(0.8))
+                        .foregroundStyle(isDarkMode ? .white : .black.opacity(0.8))
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text("\(surah.name) - \(surah.germanName)")
-                        .foregroundColor(isDarkMode ? .white : .black.opacity(0.9))
+                        .foregroundStyle(isDarkMode ? .white : .black.opacity(0.9))
                         .font(.headline)
                         .lineLimit(1)
                         .shadow(color: isCurrentTrack && isDarkMode ? .cyan : .clear, radius: 5)
                     
                     Text(surah.arabicName)
                         .font(.caption)
-                        .foregroundColor(isDarkMode ? .white.opacity(0.6) : .gray)
+                        .foregroundStyle(isDarkMode ? .white.opacity(0.6) : .gray)
                 }
                 .padding(.leading, 8)
 
@@ -133,7 +133,7 @@ struct GlassyCardRow: View {
                 if isCurrentTrack {
                     Image(systemName: "waveform.path.ecg")
                         .font(.body)
-                        .foregroundColor(isDarkMode ? .cyan : .orange)
+                        .foregroundStyle(isDarkMode ? .cyan : .orange)
                         .shadow(color: isDarkMode ? .cyan : .orange.opacity(0.5), radius: 3)
                 }
             }

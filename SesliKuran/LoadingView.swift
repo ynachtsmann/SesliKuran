@@ -18,7 +18,7 @@ struct LoadingView: View {
                     .scaleEffect(1.5)
                 
                 Text("Wird geladen...")
-                    .foregroundColor(themeManager.isDarkMode ? .white : .primary)
+                    .foregroundStyle(themeManager.isDarkMode ? .white : .primary)
                     .font(.headline)
             }
             .padding(30)
