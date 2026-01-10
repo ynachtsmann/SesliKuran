@@ -139,7 +139,7 @@ struct ContentView: View {
                         Circle()
                             .stroke(
                                 LinearGradient(
-                                    gradient: Gradient(colors: themeManager.isDarkMode ? [.cyan.opacity(0.5), .purple.opacity(0.5)] : [.orange.opacity(0.4), .pink.opacity(0.4)]),
+                                    gradient: Gradient(colors: ThemeColors.gradientColors(isDarkMode: themeManager.isDarkMode)),
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing
                                 ),
@@ -147,7 +147,7 @@ struct ContentView: View {
                             )
                     )
                     .shadow(
-                        color: themeManager.isDarkMode ? .cyan.opacity(0.3) : .orange.opacity(0.2),
+                        color: ThemeColors.primaryColor(isDarkMode: themeManager.isDarkMode).opacity(0.3),
                         radius: 20, x: 0, y: 0
                     )
 
@@ -242,7 +242,7 @@ struct ContentView: View {
             }) {
                 Image(systemName: "backward.end.fill")
                     .font(.title2)
-                    .foregroundStyle(themeManager.isDarkMode ? .white : .black.opacity(0.7))
+                    .foregroundStyle(ThemeColors.buttonForeground(isDarkMode: themeManager.isDarkMode))
             }
             .accessibilityLabel("Vorherige Surah")
             
@@ -259,7 +259,7 @@ struct ContentView: View {
             }) {
                 Image(systemName: "forward.end.fill")
                     .font(.title2)
-                    .foregroundStyle(themeManager.isDarkMode ? .white : .black.opacity(0.7))
+                    .foregroundStyle(ThemeColors.buttonForeground(isDarkMode: themeManager.isDarkMode))
             }
             .accessibilityLabel("Nächste Surah")
         }
