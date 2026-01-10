@@ -7,7 +7,7 @@ import AVFoundation
 struct ContentView: View {
     // MARK: - Properties
     @StateObject private var audioManager = AudioManager()
-    @StateObject private var themeManager = ThemeManager()
+    @EnvironmentObject private var themeManager: ThemeManager
     @State private var showSlotSelection = false
     
     // MARK: - Body
@@ -72,6 +72,7 @@ struct ContentView: View {
                     // Loading Overlay
                     if audioManager.isLoading {
                         LoadingView()
+                            // themeManager is automatically inherited, but explicit injection is safe
                             .environmentObject(themeManager)
                             .transition(.opacity)
                     }

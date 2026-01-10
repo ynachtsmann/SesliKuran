@@ -13,6 +13,7 @@ struct GlassyButton: View {
         Button(action: action) {
             Image(systemName: iconName)
                 .font(.system(size: size, weight: .bold))
+                // Use foregroundStyle if available in future, keeping foregroundColor for max compatibility
                 .foregroundColor(isDarkMode ? .white : Color(white: 0.3))
                 .padding(padding)
                 .background(
