@@ -73,7 +73,12 @@ struct AudioListView: View {
         
         isLoading = true
         
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+        Task {
+            // Modern Concurrency Sleep
+            // Use 'try await' (without ?) to respect cancellation if view is dismissed
+            try await Task.sleep(nanoseconds: 500_000_000) // 0.5s
+
+            // View update on MainActor
             withAnimation {
                 loadedTracks = min(loadedTracks + 20, allSurahs.count)
                 isLoading = false
