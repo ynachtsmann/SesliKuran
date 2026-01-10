@@ -433,9 +433,9 @@ final class AudioManager: NSObject, ObservableObject, AVAudioPlayerDelegate {
         var nowPlayingInfo = [String: Any]()
         nowPlayingInfo[MPMediaItemPropertyTitle] = track.name
         nowPlayingInfo[MPMediaItemPropertyArtist] = track.germanName
-        nowPlayingInfo[MPMediaItemPropertyPlaybackDuration] = duration
-        nowPlayingInfo[MPNowPlayingInfoPropertyElapsedPlaybackTime] = currentTime
-        nowPlayingInfo[MPNowPlayingInfoPropertyPlaybackRate] = isPlaying ? playbackRate : 0.0
+        nowPlayingInfo[MPMediaItemPropertyPlaybackDuration] = Double(duration)
+        nowPlayingInfo[MPNowPlayingInfoPropertyElapsedPlaybackTime] = Double(currentTime)
+        nowPlayingInfo[MPNowPlayingInfoPropertyPlaybackRate] = Double(isPlaying ? playbackRate : 0.0)
 
         // Add Artwork if we had it. For now text only.
 
@@ -478,12 +478,10 @@ final class AudioManager: NSObject, ObservableObject, AVAudioPlayerDelegate {
     }
 
     @objc private func handleAppDidBecomeActive() {
-        Task { @MainActor in
-            self.hasEnteredForeground = true
-        }
+        self.hasEnteredForeground = true
     }
 
-    @objc private func handleMediaServicesReset(notification: Notification) {
+    nonisolated @objc private func handleMediaServicesReset(notification: Notification) {
         // Full Reset of Audio Stack
         print("CRITICAL: Media Services Reset Detected. Rebuilding Audio Stack...")
 
@@ -516,17 +514,18 @@ final class AudioManager: NSObject, ObservableObject, AVAudioPlayerDelegate {
         var bgTask: UIBackgroundTaskIdentifier = .invalid
 
         // Ensure robust background task handling
+        // Must be called synchronously to guarantee execution time
         bgTask = app.beginBackgroundTask {
             // Expiration Handler: Final safety net
             app.endBackgroundTask(bgTask)
             bgTask = .invalid
         }
         
-        Task { @MainActor in
-            self.saveCurrentPosition()
-            
-            // Allow a small window for the async save to propagate to disk (Queue dispatch)
-            // We use Task.sleep to yield control briefly.
+        // Save Logic
+        self.saveCurrentPosition()
+
+        // Wait briefly for the save to hit disk (async queue in PersistenceManager)
+        Task {
             try? await Task.sleep(nanoseconds: 200_000_000) // 0.2s buffer
             
             if bgTask != .invalid {
@@ -536,7 +535,7 @@ final class AudioManager: NSObject, ObservableObject, AVAudioPlayerDelegate {
         }
     }
     
-    @objc private func handleInterruption(notification: Notification) {
+    nonisolated @objc private func handleInterruption(notification: Notification) {
         guard let userInfo = notification.userInfo,
               let typeValue = userInfo[AVAudioSessionInterruptionTypeKey] as? UInt,
               let type = AVAudioSession.InterruptionType(rawValue: typeValue) else { return }
