@@ -6,7 +6,7 @@ import AVFoundation
 // MARK: - Main View
 struct ContentView: View {
     // MARK: - Properties
-    @StateObject private var audioManager = AudioManager()
+    @EnvironmentObject var audioManager: AudioManager
     @EnvironmentObject private var themeManager: ThemeManager
     @State private var showSlotSelection = false
     
@@ -297,6 +297,8 @@ struct VisualEffectView: UIViewRepresentable {
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
         ContentView()
+            .environmentObject(AudioManager())
+            .environmentObject(ThemeManager())
     }
 }
 #endif

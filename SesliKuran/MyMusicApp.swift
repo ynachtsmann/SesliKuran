@@ -6,6 +6,7 @@ import SwiftUI
 struct MyMusicApp: App {
     // MARK: - Properties
     @StateObject private var themeManager = ThemeManager()
+    @StateObject private var audioManager = AudioManager()
     @Environment(\.scenePhase) private var scenePhase
     
     // MARK: - Body
@@ -13,6 +14,7 @@ struct MyMusicApp: App {
         WindowGroup {
             ContentView()
                 .environmentObject(themeManager)
+                .environmentObject(audioManager)
         }
         .onChange(of: scenePhase) { newPhase in
             switch newPhase {
