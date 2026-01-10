@@ -14,7 +14,7 @@ struct GlassyButton: View {
             Image(systemName: iconName)
                 .font(.system(size: size, weight: .bold))
                 // Updated to foregroundStyle for modern iOS support
-                .foregroundStyle(isDarkMode ? .white : Color(white: 0.3))
+                .foregroundStyle(ThemeColors.buttonForeground(isDarkMode: isDarkMode))
                 .padding(padding)
                 .background(
                     ZStack {
@@ -64,7 +64,7 @@ struct GlassyControlButton: View {
             ZStack {
                 // Glow effect (Stronger in dark mode, subtle in light)
                 Circle()
-                    .fill(isDarkMode ? Color.white.opacity(0.1) : Color.blue.opacity(0.05))
+                    .fill(isDarkMode ? Color.white.opacity(0.1) : ThemeColors.primaryColor(isDarkMode: false).opacity(0.2))
                     .frame(width: size * 2.5, height: size * 2.5)
                     .blur(radius: 10)
 
@@ -77,10 +77,7 @@ struct GlassyControlButton: View {
                             gradient: Gradient(colors: isDarkMode ? [
                                 Color.white.opacity(0.2),
                                 Color.white.opacity(0.05)
-                            ] : [
-                                Color.blue.opacity(0.6), // Light mode uses a pop of color for main control
-                                Color.purple.opacity(0.4)
-                            ]),
+                            ] : ThemeColors.gradientColors(isDarkMode: false)),
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
@@ -101,7 +98,7 @@ struct GlassyControlButton: View {
                             )
                     )
                     .shadow(
-                        color: isDarkMode ? Color.black.opacity(0.3) : Color.blue.opacity(0.2),
+                        color: isDarkMode ? Color.black.opacity(0.3) : ThemeColors.primaryColor(isDarkMode: false).opacity(0.3),
                         radius: 10, x: 0, y: 5
                     )
             }
@@ -132,7 +129,7 @@ struct NeumorphicSlider: View {
                 Capsule()
                     .fill(
                         LinearGradient(
-                            gradient: Gradient(colors: isDarkMode ? [.cyan, .blue, .purple] : [.blue, .purple, .pink]),
+                            gradient: Gradient(colors: ThemeColors.gradientColors(isDarkMode: isDarkMode)),
                             startPoint: .leading,
                             endPoint: .trailing
                         )

@@ -92,7 +92,7 @@ struct GlassyCardRow: View {
                     Circle()
                         .fill(
                             isCurrentTrack ?
-                            (isDarkMode ? Color.cyan.opacity(0.3) : Color.orange.opacity(0.3)) :
+                            ThemeColors.primaryColor(isDarkMode: isDarkMode).opacity(0.3) :
                             (isDarkMode ? Color.white.opacity(0.1) : Color.white.opacity(0.4))
                         )
                         .frame(width: 44, height: 44)
@@ -107,7 +107,7 @@ struct GlassyCardRow: View {
                         .foregroundStyle(isDarkMode ? .white : .black.opacity(0.9))
                         .font(.headline)
                         .lineLimit(1)
-                        .shadow(color: isCurrentTrack && isDarkMode ? .cyan : .clear, radius: 5)
+                        .shadow(color: isCurrentTrack && isDarkMode ? ThemeColors.primaryColor(isDarkMode: true) : .clear, radius: 5)
                     
                     Text(surah.arabicName)
                         .font(.caption)
@@ -121,8 +121,8 @@ struct GlassyCardRow: View {
                 if isCurrentTrack {
                     Image(systemName: "waveform.path.ecg")
                         .font(.body)
-                        .foregroundStyle(isDarkMode ? .cyan : .orange)
-                        .shadow(color: isDarkMode ? .cyan : .orange.opacity(0.5), radius: 3)
+                        .foregroundStyle(ThemeColors.primaryColor(isDarkMode: isDarkMode))
+                        .shadow(color: ThemeColors.primaryColor(isDarkMode: isDarkMode).opacity(isDarkMode ? 1.0 : 0.5), radius: 3)
                 }
             }
             .padding(16)
@@ -139,7 +139,7 @@ struct GlassyCardRow: View {
                             RoundedRectangle(cornerRadius: 20)
                                 .stroke(
                                     LinearGradient(
-                                        gradient: Gradient(colors: [.cyan.opacity(0.6), .purple.opacity(0.6)]),
+                                        gradient: Gradient(colors: ThemeColors.gradientColors(isDarkMode: true).map { $0.opacity(0.6) }),
                                         startPoint: .topLeading,
                                         endPoint: .bottomTrailing
                                     ),

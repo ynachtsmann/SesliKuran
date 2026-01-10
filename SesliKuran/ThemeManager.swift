@@ -1,6 +1,32 @@
 // MARK: - Imports
 import SwiftUI
 
+// MARK: - Theme Colors
+struct ThemeColors {
+    // Gradient for Buttons, Sliders, Active Elements
+    static func gradientColors(isDarkMode: Bool) -> [Color] {
+        // Light Mode: Warm Peach/Gold/Pink
+        // Dark Mode: Cyberpunk Cyan/Blue/Purple
+        return isDarkMode ? [.cyan, .blue, .purple] : [Color.orange, Color.pink]
+    }
+
+    // Primary Accent Color (for glows, single-color icons)
+    static func primaryColor(isDarkMode: Bool) -> Color {
+        return isDarkMode ? .cyan : .orange
+    }
+
+    // Secondary Accent Color
+    static func secondaryColor(isDarkMode: Bool) -> Color {
+        return isDarkMode ? .purple : .pink
+    }
+
+    // Foreground Color for Interactive Elements (Buttons, Icons)
+    // Replaces harsh black with White (Dark Mode) or Deep Warm Brown/Purple (Light Mode)
+    static func buttonForeground(isDarkMode: Bool) -> Color {
+        return isDarkMode ? .white : Color(red: 0.3, green: 0.15, blue: 0.2) // Deep Warm Brown-Purple
+    }
+}
+
 // MARK: - Theme Manager
 // Central Source of Truth for App Theme
 @MainActor
