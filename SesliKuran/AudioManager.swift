@@ -480,7 +480,7 @@ final class AudioManager: NSObject, ObservableObject, AVAudioPlayerDelegate {
         self.hasEnteredForeground = true
     }
 
-    nonisolated @objc func handleMediaServicesReset(notification: Notification) {
+    @objc nonisolated func handleMediaServicesReset(notification: Notification) {
         // Full Reset of Audio Stack
         print("CRITICAL: Media Services Reset Detected. Rebuilding Audio Stack...")
 
@@ -534,7 +534,7 @@ final class AudioManager: NSObject, ObservableObject, AVAudioPlayerDelegate {
         }
     }
     
-    nonisolated @objc func handleInterruption(notification: Notification) {
+    @objc nonisolated func handleInterruption(notification: Notification) {
         guard let userInfo = notification.userInfo,
               let typeValue = userInfo[AVAudioSessionInterruptionTypeKey] as? UInt,
               let type = AVAudioSession.InterruptionType(rawValue: typeValue) else { return }
