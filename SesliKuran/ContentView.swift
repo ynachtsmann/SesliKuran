@@ -88,6 +88,7 @@ struct ContentView: View {
             }
             .navigationViewStyle(StackNavigationViewStyle()) // Force stack on iPad
         }
+        .edgesIgnoringSafeArea(.all) // Ensure GeometryReader covers the full screen (Edge-to-Edge)
     }
     
     // MARK: - Header Section
