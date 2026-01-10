@@ -6,7 +6,7 @@ import MediaPlayer
 // Architecture: @MainActor isolated for UI safety, NSObject for Delegate conformance.
 // Stability: Uses structured concurrency (Tasks) instead of legacy Timers to prevent run-loop crashes.
 @MainActor
-class AudioManager: NSObject, ObservableObject, AVAudioPlayerDelegate {
+final class AudioManager: NSObject, ObservableObject, AVAudioPlayerDelegate {
 
     // MARK: - Published State (UI Drivers)
     @Published var isPlaying: Bool = false
@@ -58,8 +58,9 @@ class AudioManager: NSObject, ObservableObject, AVAudioPlayerDelegate {
         self.playbackRate = settings.playbackSpeed
 
         // Load Last Active Track (Default to 1 if none)
+        // Optimization: Use Dictionary O(1) or Safe Fallback
         let lastID = settings.lastActiveTrackID
-        let lastTrack = SurahData.allSurahs.first(where: { $0.id == lastID }) ?? SurahData.allSurahs[0]
+        let lastTrack = SurahData.getSurah(id: lastID) ?? SurahData.fallbackSurah
 
         // Prepare the player without auto-playing
         // Note: loadAudio is safe to call here as we are on MainActor and it sets state.
@@ -256,15 +257,13 @@ class AudioManager: NSObject, ObservableObject, AVAudioPlayerDelegate {
     func nextTrack() {
         guard let current = selectedTrack else { return }
         let nextId = current.id + 1
-        // CORRECTED: Use SurahData.allSurahs
-        if let nextSurah = SurahData.allSurahs.first(where: { $0.id == nextId }) {
+
+        // Use Optimized Accessor
+        if let nextSurah = SurahData.getSurah(id: nextId) {
             // USER NAVIGATION: Always start from 0:00
             loadAudio(track: nextSurah, autoPlay: true, resumePlayback: false)
         } else {
-            // End of Playlist: Loop to start or stop?
-            // Standard behavior: Stop or Loop to 1. Let's loop to 1 for continuous play if desired,
-            // or just stop. Given "Zero-Maintenance", stopping is safer than infinite loops.
-            // But user might want continuous. Let's Stop.
+            // End of Playlist: Stop.
             isPlaying = false
             stopTasks()
         }
@@ -280,8 +279,9 @@ class AudioManager: NSObject, ObservableObject, AVAudioPlayerDelegate {
         }
         
         let prevId = current.id - 1
-        // CORRECTED: Use SurahData.allSurahs
-        if let prevSurah = SurahData.allSurahs.first(where: { $0.id == prevId }) {
+
+        // Use Optimized Accessor
+        if let prevSurah = SurahData.getSurah(id: prevId) {
             // USER NAVIGATION: Always start from 0:00
             loadAudio(track: prevSurah, autoPlay: true, resumePlayback: false)
         }

@@ -12,69 +12,80 @@ struct ContentView: View {
     
     // MARK: - Body
     var body: some View {
-        NavigationView {
-            ZStack(alignment: .topLeading) {
-                // Living Background - Passed Theme
-                AuroraBackgroundView(isDarkMode: themeManager.isDarkMode)
-                
-                // Main Content
-                VStack(spacing: 20) {
-                    headerSection
-                    Spacer()
-                    nowPlayingSection
-                    controlSection
-                    Spacer()
-                }
-                .padding()
-                
-                // Audio List Overlay (True Floating Cards)
-                if showSlotSelection {
-                    ZStack {
-                        // Dimmed background for focus, but clearer than before
-                        Color.black.opacity(0.3)
-                            .edgesIgnoringSafeArea(.all)
-                            .onTapGesture {
-                                withAnimation {
-                                    showSlotSelection = false
-                                }
-                            }
+        GeometryReader { geometry in
+            NavigationView {
+                ZStack(alignment: .topLeading) {
+                    // Living Background - Passed Theme
+                    AuroraBackgroundView(isDarkMode: themeManager.isDarkMode)
+                        .edgesIgnoringSafeArea(.all)
 
-                        VStack {
-                            Spacer()
-                            // No background container here anymore - just the list
-                            AudioListView(isShowing: $showSlotSelection) { selectedTrack in
-                                audioManager.selectedTrack = selectedTrack
-                                // MANUAL SELECTION: Always start from 0:00 (resumePlayback: false)
-                                audioManager.loadAudio(track: selectedTrack, autoPlay: true, resumePlayback: false)
-                                withAnimation(.easeInOut(duration: 0.3)) {
-                                    showSlotSelection = false
-                                }
-                            }
-                            .environmentObject(audioManager)
-                            .environmentObject(themeManager)
-                            .frame(height: UIScreen.main.bounds.height * 0.75)
-                            .transition(.move(edge: .bottom))
-                        }
-                        .edgesIgnoringSafeArea(.bottom)
+                    // Main Content
+                    VStack(spacing: 20) {
+                        headerSection
+                        Spacer()
+
+                        // Pass Geometry to resize the circle dynamically while keeping aspect ratio
+                        nowPlayingSection(geometry: geometry)
+
+                        controlSection
+                        Spacer()
                     }
-                    .zIndex(2)
+                    .padding()
+                    // Safe Area Handling for iPad/iPhone
+                    .padding(.top, geometry.safeAreaInsets.top)
+                    .padding(.bottom, geometry.safeAreaInsets.bottom > 0 ? 0 : 20)
+
+                    // Audio List Overlay (True Floating Cards)
+                    if showSlotSelection {
+                        ZStack {
+                            // Dimmed background for focus, but clearer than before
+                            Color.black.opacity(0.3)
+                                .edgesIgnoringSafeArea(.all)
+                                .onTapGesture {
+                                    withAnimation {
+                                        showSlotSelection = false
+                                    }
+                                }
+
+                            VStack {
+                                Spacer()
+                                // No background container here anymore - just the list
+                                AudioListView(isShowing: $showSlotSelection) { selectedTrack in
+                                    audioManager.selectedTrack = selectedTrack
+                                    // MANUAL SELECTION: Always start from 0:00 (resumePlayback: false)
+                                    audioManager.loadAudio(track: selectedTrack, autoPlay: true, resumePlayback: false)
+                                    withAnimation(.easeInOut(duration: 0.3)) {
+                                        showSlotSelection = false
+                                    }
+                                }
+                                .environmentObject(audioManager)
+                                .environmentObject(themeManager)
+                                // Modern Layout: Use GeometryReader height instead of UIScreen
+                                .frame(height: geometry.size.height * 0.75)
+                                .transition(.move(edge: .bottom))
+                            }
+                            .edgesIgnoringSafeArea(.bottom)
+                        }
+                        .zIndex(2)
+                    }
+
+                    // Loading Overlay
+                    if audioManager.isLoading {
+                        LoadingView()
+                            .environmentObject(themeManager)
+                            .transition(.opacity)
+                    }
                 }
-                
-                // Loading Overlay
-                if audioManager.isLoading {
-                    LoadingView()
-                        .environmentObject(themeManager)
-                        .transition(.opacity)
+                .navigationBarHidden(true)
+                .alert(isPresented: $audioManager.showError) {
+                    Alert(
+                        title: Text("Fehler"),
+                        message: Text(audioManager.errorMessage ?? "Unbekannter Fehler"),
+                        dismissButton: .default(Text("OK"))
+                    )
                 }
             }
-            .navigationBarHidden(true)
-            .alert(isPresented: $audioManager.showError) {
-                Alert(
-                    title: Text("Fehler"),
-                    message: Text(audioManager.errorMessage ?? "Unbekannter Fehler"),
-                    dismissButton: .default(Text("OK"))
-                )
-            }
+            .navigationViewStyle(StackNavigationViewStyle()) // Force stack on iPad
         }
     }
     
@@ -110,13 +121,18 @@ struct ContentView: View {
     }
     
     // MARK: - Now Playing Section
-    private var nowPlayingSection: some View {
+    private func nowPlayingSection(geometry: GeometryProxy) -> some View {
         VStack(spacing: 25) {
             // Cover Art / Futuristic Typography
+            // Dynamic Sizing logic:
+            // Calculate size based on min dimension to fit perfectly on both devices.
+            // Cap at 350 to prevent it becoming too massive on 12.9" iPad.
+            let size = min(geometry.size.width * 0.7, 350)
+
             ZStack {
                 Circle()
                     .fill(themeManager.isDarkMode ? Color.white.opacity(0.05) : Color.white.opacity(0.3))
-                    .frame(width: 280, height: 280)
+                    .frame(width: size, height: size)
                     .overlay(
                         Circle()
                             .stroke(
@@ -136,21 +152,23 @@ struct ContentView: View {
                 if let selectedTrack = audioManager.selectedTrack {
                     VStack(spacing: 5) {
                         Text("\(selectedTrack.id)")
-                            .font(.system(size: 80, weight: .thin, design: .rounded))
+                            .font(.system(size: size * 0.3, weight: .thin, design: .rounded))
                             .foregroundColor(themeManager.isDarkMode ? .white : .black.opacity(0.8))
                             .shadow(color: themeManager.isDarkMode ? .white.opacity(0.8) : .clear, radius: 10)
 
                         Text("SURAH")
-                            .font(.system(size: 14, weight: .bold, design: .monospaced))
+                            .font(.system(size: size * 0.05, weight: .bold, design: .monospaced))
                             .tracking(5)
                             .foregroundColor(themeManager.isDarkMode ? .white.opacity(0.7) : .gray)
                     }
                 } else {
                     Image(systemName: "music.quarternote.3")
-                        .font(.system(size: 80))
+                        .font(.system(size: size * 0.3))
                         .foregroundColor(themeManager.isDarkMode ? .white.opacity(0.5) : .gray.opacity(0.5))
                 }
             }
+            // Strict Aspect Ratio to prevent oval stretching
+            .aspectRatio(1, contentMode: .fit)
             .padding(.bottom, 20)
             
             // Text Info
@@ -185,6 +203,8 @@ struct ContentView: View {
             // Slider
             timeSliderView
                 .padding(.top, 10)
+                // Constrain slider width on iPad so it doesn't look ridiculous
+                .frame(maxWidth: 500)
         }
     }
     
@@ -251,6 +271,8 @@ struct ContentView: View {
                         .stroke(themeManager.isDarkMode ? Color.white.opacity(0.1) : Color.white.opacity(0.4), lineWidth: 1)
                 )
         )
+        // Prevent button spread on iPad
+        .fixedSize(horizontal: true, vertical: false)
     }
     
     // MARK: - Helper Methods
