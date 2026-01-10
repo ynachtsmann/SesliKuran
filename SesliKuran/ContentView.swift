@@ -77,7 +77,7 @@ struct ContentView: View {
                             .transition(.opacity)
                     }
                 }
-                .navigationBarHidden(true)
+                .toolbar(.hidden, for: .navigationBar)
                 .alert(isPresented: $audioManager.showError) {
                     Alert(
                         title: Text("Fehler"),
@@ -155,18 +155,18 @@ struct ContentView: View {
                     VStack(spacing: 5) {
                         Text("\(selectedTrack.id)")
                             .font(.system(size: size * 0.3, weight: .thin, design: .rounded))
-                            .foregroundColor(themeManager.isDarkMode ? .white : .black.opacity(0.8))
+                            .foregroundStyle(themeManager.isDarkMode ? .white : .black.opacity(0.8))
                             .shadow(color: themeManager.isDarkMode ? .white.opacity(0.8) : .clear, radius: 10)
 
                         Text("SURAH")
                             .font(.system(size: size * 0.05, weight: .bold, design: .monospaced))
                             .tracking(5)
-                            .foregroundColor(themeManager.isDarkMode ? .white.opacity(0.7) : .gray)
+                            .foregroundStyle(themeManager.isDarkMode ? .white.opacity(0.7) : .gray)
                     }
                 } else {
                     Image(systemName: "music.quarternote.3")
                         .font(.system(size: size * 0.3))
-                        .foregroundColor(themeManager.isDarkMode ? .white.opacity(0.5) : .gray.opacity(0.5))
+                        .foregroundStyle(themeManager.isDarkMode ? .white.opacity(0.5) : .gray.opacity(0.5))
                 }
             }
             // Strict Aspect Ratio to prevent oval stretching
@@ -180,13 +180,13 @@ struct ContentView: View {
                     Text("\(selectedTrack.name) - \(selectedTrack.germanName)")
                         .font(.title2)
                         .fontWeight(.bold)
-                        .foregroundColor(themeManager.isDarkMode ? .white : .black.opacity(0.8))
+                        .foregroundStyle(themeManager.isDarkMode ? .white : .black.opacity(0.8))
                         .lineLimit(1)
                         .shadow(radius: themeManager.isDarkMode ? 5 : 0)
 
                     Text(selectedTrack.arabicName)
                         .font(.title3)
-                        .foregroundColor(themeManager.isDarkMode ? .white.opacity(0.8) : .gray)
+                        .foregroundStyle(themeManager.isDarkMode ? .white.opacity(0.8) : .gray)
                 }
             } else {
                 // Placeholder State - Never Crash
@@ -194,11 +194,11 @@ struct ContentView: View {
                     Text("Wähle eine Surah")
                         .font(.title2)
                         .fontWeight(.semibold)
-                        .foregroundColor(themeManager.isDarkMode ? .white.opacity(0.8) : .gray)
+                        .foregroundStyle(themeManager.isDarkMode ? .white.opacity(0.8) : .gray)
 
                     Text("---")
                         .font(.title3)
-                        .foregroundColor(themeManager.isDarkMode ? .white.opacity(0.5) : .gray.opacity(0.5))
+                        .foregroundStyle(themeManager.isDarkMode ? .white.opacity(0.5) : .gray.opacity(0.5))
                 }
             }
             
@@ -229,7 +229,7 @@ struct ContentView: View {
                 Text(timeString(time: audioManager.duration))
             }
             .font(.caption)
-            .foregroundColor(themeManager.isDarkMode ? .white.opacity(0.6) : .gray)
+            .foregroundStyle(themeManager.isDarkMode ? .white.opacity(0.6) : .gray)
             .padding(.horizontal)
         }
     }
@@ -242,7 +242,7 @@ struct ContentView: View {
             }) {
                 Image(systemName: "backward.end.fill")
                     .font(.title2)
-                    .foregroundColor(themeManager.isDarkMode ? .white : .black.opacity(0.7))
+                    .foregroundStyle(themeManager.isDarkMode ? .white : .black.opacity(0.7))
             }
             .accessibilityLabel("Vorherige Surah")
             
@@ -259,7 +259,7 @@ struct ContentView: View {
             }) {
                 Image(systemName: "forward.end.fill")
                     .font(.title2)
-                    .foregroundColor(themeManager.isDarkMode ? .white : .black.opacity(0.7))
+                    .foregroundStyle(themeManager.isDarkMode ? .white : .black.opacity(0.7))
             }
             .accessibilityLabel("Nächste Surah")
         }
