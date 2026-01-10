@@ -88,13 +88,12 @@ final class AudioManager: NSObject, ObservableObject, AVAudioPlayerDelegate {
             } catch {
                 attempt += 1
                 print("CRITICAL: Failed to setup audio session (Attempt \(attempt)): \(error)")
-                if attempt < maxAttempts {
-                    // We can't block the main thread with sleep.
-                    // Instead, we trust that a failure here might be recoverable later or
-                    // via the mediaServicesReset handler.
-                    // Logging is sufficient for "Silent" degradation.
-                }
             }
+        }
+
+        if !success {
+            self.errorMessage = "Audio-Hardware konnte nicht initialisiert werden. Bitte Gerät neustarten."
+            self.showError = true
         }
     }
     
