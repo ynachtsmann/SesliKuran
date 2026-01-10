@@ -8,9 +8,6 @@ struct AudioListView: View {
     let onTrackSelected: (Surah) -> Void
     private let allSurahs = SurahData.allSurahs
     
-    @State private var loadedTracks: Int = 20
-    @State private var isLoading = false
-    
     var body: some View {
         VStack {
             // Header for List
@@ -36,54 +33,45 @@ struct AudioListView: View {
             .padding(.horizontal)
             .padding(.top, 20)
             
-            ScrollView {
-                // Changed from LazyVStack to standard VStack for more predictable card rendering if needed,
-                // but LazyVStack is better for performance. Keeping LazyVStack but adding padding.
-                LazyVStack(spacing: 16) { // Increased spacing for "Floating" feel
-                    ForEach(allSurahs.prefix(loadedTracks)) { surah in
-                        GlassyCardRow(
-                            surah: surah,
-                            isCurrentTrack: surah.id == audioManager.selectedTrack?.id,
-                            isDarkMode: themeManager.isDarkMode,
-                            onTrackSelected: onTrackSelected
-                        )
+            ScrollViewReader { proxy in
+                ScrollView {
+                    // Changed from LazyVStack to standard VStack for more predictable card rendering if needed,
+                    // but LazyVStack is better for performance. Keeping LazyVStack but adding padding.
+                    LazyVStack(spacing: 16) { // Increased spacing for "Floating" feel
+                        ForEach(allSurahs) { surah in
+                            GlassyCardRow(
+                                surah: surah,
+                                isCurrentTrack: surah.id == audioManager.selectedTrack?.id,
+                                isDarkMode: themeManager.isDarkMode,
+                                onTrackSelected: onTrackSelected
+                            )
+                            .id(surah.id)
+                        }
                     }
-                    
-                    if loadedTracks < allSurahs.count {
-                        Button(action: loadMoreTracks) {
-                            if isLoading {
-                                ProgressView()
-                                    .progressViewStyle(CircularProgressViewStyle(tint: themeManager.isDarkMode ? .white : .gray))
-                            } else {
-                                Text("Weitere Kapitel laden")
-                                    .foregroundStyle(themeManager.isDarkMode ? .white.opacity(0.7) : .blue)
-                                    .padding(.vertical, 10)
+                    .padding()
+                }
+                .onAppear {
+                    if let selectedId = audioManager.selectedTrack?.id {
+                        // Small delay to ensure layout is ready
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                            withAnimation {
+                                proxy.scrollTo(selectedId, anchor: .center)
                             }
                         }
                     }
                 }
-                .padding()
+                .onChange(of: isShowing) { showing in
+                    if showing, let selectedId = audioManager.selectedTrack?.id {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                            withAnimation {
+                                proxy.scrollTo(selectedId, anchor: .center)
+                            }
+                        }
+                    }
+                }
             }
         }
         .background(Color.clear)
-    }
-    
-    private func loadMoreTracks() {
-        guard !isLoading else { return }
-        
-        isLoading = true
-        
-        Task {
-            // Modern Concurrency Sleep
-            // Use 'try await' (without ?) to respect cancellation if view is dismissed
-            try await Task.sleep(nanoseconds: 500_000_000) // 0.5s
-
-            // View update on MainActor
-            withAnimation {
-                loadedTracks = min(loadedTracks + 20, allSurahs.count)
-                isLoading = false
-            }
-        }
     }
 }
 
