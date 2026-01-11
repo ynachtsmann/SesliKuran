@@ -4,26 +4,37 @@ import UIKit
 // MARK: - Layout Configuration
 /// Defines the specific layout constants for the current device environment.
 struct LayoutConfig {
-    let sidePadding: CGFloat
-    let landscapeSideMargin: CGFloat
-    let artScaleFactor: CGFloat
-    let controlSpacing: CGFloat
-    let splitViewRatio: CGFloat // e.g., 0.45 means 45% for Art, 55% for Controls
+    /// The minimum distance from the screen edge (inside the Safe Area).
+    let contentMargin: CGFloat
 
+    /// Extra margin for Landscape mode to clear dynamic islands/notches comfortably.
+    let landscapeSideMargin: CGFloat
+
+    /// Scale factor for the Art/Circle.
+    let artScaleFactor: CGFloat
+
+    /// Spacing between control elements.
+    let controlSpacing: CGFloat
+
+    /// Ratio for Split View (e.g., 0.45 = 45% Left, 55% Right).
+    let splitViewRatio: CGFloat
+
+    /// Standard iPhone Configuration
     static let standard = LayoutConfig(
-        sidePadding: 20,
-        landscapeSideMargin: 48, // Generous margin for Notches/Dynamic Island
+        contentMargin: 20,
+        landscapeSideMargin: 48,
         artScaleFactor: 0.7,
         controlSpacing: 20,
         splitViewRatio: 0.45
     )
 
+    /// Standard iPad Configuration
     static let iPad = LayoutConfig(
-        sidePadding: 40,
+        contentMargin: 40,
         landscapeSideMargin: 60,
         artScaleFactor: 0.6,
         controlSpacing: 40,
-        splitViewRatio: 0.4 // 40% Art, 60% Controls for more breathing room
+        splitViewRatio: 0.4
     )
 }
 
@@ -40,8 +51,6 @@ final class DeviceLayoutManager {
     }
 
     /// Returns the appropriate configuration based on the current device.
-    /// Note: While the device type (iPad/iPhone) is constant, the orientation
-    /// is handled dynamically by the View's GeometryReader.
     var config: LayoutConfig {
         return isIPad ? .iPad : .standard
     }
@@ -62,23 +71,36 @@ final class DeviceLayoutManager {
         }
     }
 
-    /// Returns the safe area padding to use for the "Buttons sticking out" fix.
-    /// Adds extra margin in landscape to avoid corners/notches.
-    func safeAreaInsets(for geometry: GeometryProxy, isLandscape: Bool) -> EdgeInsets {
-        let base = geometry.safeAreaInsets
+    /// Calculates the strict padding required to create a "Safe Container" window.
+    /// This ensures no content touches the screen edges, notches, or home indicators.
+    func safeContainerPadding(for geometry: GeometryProxy, isLandscape: Bool) -> EdgeInsets {
+        let safeArea = geometry.safeAreaInsets
         let config = self.config
 
-        // In Landscape, enforce a minimum side margin to prevent corner clipping.
-        // We use the maximum of the actual safe area (notch) and our custom margin
-        // to ensure content is never hidden behind the Dynamic Island or rounded corners.
-        let maxSafeArea = max(base.leading, base.trailing)
-        let horizontalPadding = isLandscape ? max(maxSafeArea, config.landscapeSideMargin) : base.leading
+        // Horizontal: Ensure we clear the notch/dynamic island + have a pleasant margin.
+        // In Landscape, the notch is on the side, so we need a larger minimum margin.
+        let horizontalBase = isLandscape ? max(safeArea.leading, safeArea.trailing) : 0
+        // If landscape, use the larger landscape margin. If portrait, use standard content margin.
+        let horizontalExtra = isLandscape ? config.landscapeSideMargin : config.contentMargin
+
+        // We take the MAX of the physical safe area or our designed margin to be safe.
+        // Actually, we want (Safe Area + Margin).
+        // Let's allow the Safe Area to handle the "Hardware" part, and add our "Design" margin on top.
+
+        let top = safeArea.top + (isLandscape ? 10 : config.contentMargin) // Less top padding in landscape to save height
+        let bottom = safeArea.bottom + (isLandscape ? 10 : config.contentMargin)
+
+        // For sides:
+        // In Landscape: The Safe Area ALREADY excludes the notch.
+        // We just need to add our aesthetic margin on top of that.
+        let leading = safeArea.leading + (isLandscape ? 10 : config.contentMargin)
+        let trailing = safeArea.trailing + (isLandscape ? 10 : config.contentMargin)
 
         return EdgeInsets(
-            top: base.top,
-            leading: horizontalPadding,
-            bottom: base.bottom,
-            trailing: horizontalPadding // Symmetry for aesthetic balance
+            top: top,
+            leading: leading,
+            bottom: bottom,
+            trailing: trailing
         )
     }
 }
