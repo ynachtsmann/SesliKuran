@@ -23,7 +23,8 @@ struct ThemeColors {
     // Foreground Color for Interactive Elements (Buttons, Icons)
     // Replaces harsh black with White (Dark Mode) or Deep Warm Brown/Purple (Light Mode)
     static func buttonForeground(isDarkMode: Bool) -> Color {
-        return isDarkMode ? .white : Color(red: 0.3, green: 0.15, blue: 0.2) // Deep Warm Brown-Purple
+        // Updated to match Primary Color (Cyan for Dark, Orange for Light)
+        return isDarkMode ? .cyan : .orange
     }
 }
 

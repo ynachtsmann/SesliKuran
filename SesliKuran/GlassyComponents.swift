@@ -18,11 +18,12 @@ struct GlassyButton: View {
                 .padding(padding)
                 .background(
                     ZStack {
-                        // Glass effect
+                        // Glass effect with subtle primary color tint
                         if isDarkMode {
-                            Color.white.opacity(isActive ? 0.3 : 0.1)
+                            ThemeColors.primaryColor(isDarkMode: true).opacity(0.1) // Subtle Cyan Tint
+                                .background(Color.white.opacity(0.05)) // Base Glass
                         } else {
-                            Color.white.opacity(0.6)
+                            Color.white.opacity(0.8)
                         }
 
                         // Subtle border
@@ -45,8 +46,9 @@ struct GlassyButton: View {
                 )
                 .clipShape(Circle())
                 .shadow(
-                    color: isDarkMode ? Color.black.opacity(0.2) : Color.gray.opacity(0.15),
-                    radius: 5, x: 0, y: 5
+                    // Unified Glow using Primary Color
+                    color: ThemeColors.primaryColor(isDarkMode: isDarkMode).opacity(isDarkMode ? 0.6 : 0.4),
+                    radius: 10, x: 0, y: 0
                 )
         }
     }
@@ -62,35 +64,34 @@ struct GlassyControlButton: View {
     var body: some View {
         Button(action: action) {
             ZStack {
-                // Glow effect (Stronger in dark mode, subtle in light)
+                // Glow effect (Unified: Primary Color)
                 Circle()
-                    .fill(isDarkMode ? Color.white.opacity(0.1) : ThemeColors.primaryColor(isDarkMode: false).opacity(0.2))
+                    .fill(ThemeColors.primaryColor(isDarkMode: isDarkMode).opacity(0.5))
                     .frame(width: size * 2.5, height: size * 2.5)
-                    .blur(radius: 10)
+                    .blur(radius: 15)
 
                 Image(systemName: iconName)
                     .font(.system(size: size, weight: .bold))
-                    .foregroundStyle(isDarkMode ? .white : .white) // Keep icon white for contrast on gradient
+                    // Icon Foreground: Primary Color
+                    .foregroundStyle(ThemeColors.primaryColor(isDarkMode: isDarkMode))
                     .frame(width: size * 2, height: size * 2)
                     .background(
-                        LinearGradient(
-                            gradient: Gradient(colors: isDarkMode ? [
-                                Color.white.opacity(0.2),
-                                Color.white.opacity(0.05)
-                            ] : ThemeColors.gradientColors(isDarkMode: false)),
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
+                        ZStack {
+                            // Glassy Background instead of Gradient Fill
+                            if isDarkMode {
+                                Color.white.opacity(0.1)
+                                    .background(.ultraThinMaterial)
+                            } else {
+                                Color.white.opacity(0.8)
+                            }
+                        }
                     )
                     .clipShape(Circle())
                     .overlay(
                         Circle()
                             .stroke(
                                 LinearGradient(
-                                    gradient: Gradient(colors: [
-                                        Color.white.opacity(0.8),
-                                        Color.white.opacity(0.2)
-                                    ]),
+                                    gradient: Gradient(colors: ThemeColors.gradientColors(isDarkMode: isDarkMode)),
                                     startPoint: .topLeading,
                                     endPoint: .bottomTrailing
                                 ),
@@ -98,8 +99,8 @@ struct GlassyControlButton: View {
                             )
                     )
                     .shadow(
-                        color: isDarkMode ? Color.black.opacity(0.3) : ThemeColors.primaryColor(isDarkMode: false).opacity(0.3),
-                        radius: 10, x: 0, y: 5
+                        color: ThemeColors.primaryColor(isDarkMode: isDarkMode).opacity(0.4),
+                        radius: 5, x: 0, y: 2
                     )
             }
         }
