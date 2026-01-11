@@ -33,11 +33,13 @@ struct AudioListView: View {
             .padding(.horizontal)
             .padding(.top, 20)
             
+            // Added explicit Safe Area Padding to the Header if needed,
+            // but the parent container in ContentView handles the edges now.
+            // We just ensure the list content itself has breathing room.
+
             ScrollViewReader { proxy in
                 ScrollView {
-                    // Changed from LazyVStack to standard VStack for more predictable card rendering if needed,
-                    // but LazyVStack is better for performance. Keeping LazyVStack but adding padding.
-                    LazyVStack(spacing: 16) { // Increased spacing for "Floating" feel
+                    LazyVStack(spacing: 16) {
                         ForEach(allSurahs) { surah in
                             GlassyCardRow(
                                 surah: surah,
@@ -48,11 +50,12 @@ struct AudioListView: View {
                             .id(surah.id)
                         }
                     }
-                    .padding()
+                    .padding(.horizontal) // Side padding for cards
+                    .padding(.bottom, 20) // Bottom padding for scrolling
+                    .padding(.top, 10)
                 }
                 .onAppear {
                     if let selectedId = audioManager.selectedTrack?.id {
-                        // Small delay to ensure layout is ready
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                             withAnimation {
                                 proxy.scrollTo(selectedId, anchor: .center)
@@ -72,6 +75,7 @@ struct AudioListView: View {
             }
         }
         .background(Color.clear)
+        // Ensure no safe area bleed internally
     }
 }
 

@@ -117,10 +117,10 @@ struct NeumorphicSlider: View {
     var body: some View {
         GeometryReader { geometry in
             ZStack(alignment: .leading) {
-                // Track - SLEEKER DESIGN (Thinner)
+                // Track - SLEEKER DESIGN (Very Thin)
                 Capsule()
                     .fill(isDarkMode ? Color.white.opacity(0.1) : Color.black.opacity(0.05))
-                    .frame(height: 4) // Reduced from 6 to 4 for a more refined look
+                    .frame(height: 3) // Further reduced to 3 for elegance
 
                 // Progress - Gradient Fill
                 // Defensive: Guard against Division by Zero
@@ -135,7 +135,7 @@ struct NeumorphicSlider: View {
                             endPoint: .trailing
                         )
                     )
-                    .frame(width: geometry.size.width * progress, height: 4) // Reduced height
+                    .frame(width: geometry.size.width * progress, height: 3)
             }
             .frame(height: 44) // Keep 44pt height for easy tapping
             .contentShape(Rectangle()) // Make the whole area tappable
@@ -146,7 +146,7 @@ struct NeumorphicSlider: View {
                 .accentColor(.clear) // Hide default knob color
                 .opacity(0.05) // Invisible but interactable
         )
-        // Visible custom knob - Slightly smaller for elegance
+        // Visible custom knob - Refined
         .overlay(
              GeometryReader { geometry in
                  // Defensive: Guard against Division by Zero
@@ -155,7 +155,7 @@ struct NeumorphicSlider: View {
 
                  Circle()
                      .fill(ThemeColors.buttonForeground(isDarkMode: isDarkMode))
-                     .frame(width: 12, height: 12) // Reduced from 16 to 12
+                     .frame(width: 10, height: 10) // Reduced to 10 for very fine look
                      .shadow(radius: 2)
                      .position(
                         x: geometry.size.width * progress,

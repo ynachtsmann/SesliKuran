@@ -16,37 +16,42 @@ struct ContentView: View {
 
     // MARK: - Body
     var body: some View {
+        // Outer GeometryReader primarily for screen size
         GeometryReader { geometry in
             let isLandscape = geometry.size.width > geometry.size.height
             // Use Manager's adaptive scale
             let scale = layoutManager.adaptiveScale(in: geometry.size)
-            // Retrieve Safe Area Insets with extra margin for Landscape
-            let safeInsets = layoutManager.safeAreaInsets(for: geometry, isLandscape: isLandscape)
             let config = layoutManager.config
 
-            NavigationView {
-                ZStack(alignment: .topLeading) {
-                    // Living Background - Passed Theme
-                    AuroraBackgroundView(isDarkMode: themeManager.isDarkMode)
-                        .edgesIgnoringSafeArea(.all)
+            // Calculate Safe Container Padding (Strict Mode)
+            let containerPadding = layoutManager.safeContainerPadding(for: geometry, isLandscape: isLandscape)
 
-                    // Main Content Container
-                    Group {
-                        if isLandscape {
-                            // LANDSCAPE LAYOUT (Split View)
+            ZStack {
+                // Layer 1: Living Background (Edges Ignored)
+                AuroraBackgroundView(isDarkMode: themeManager.isDarkMode)
+                    .edgesIgnoringSafeArea(.all)
+
+                // Layer 2: Main Content Container (Strictly Windowed)
+                // We apply explicit padding to create the "Safe Window".
+                // This ZStack acts as the "Safe Area" where all controls live.
+                ZStack {
+                    if isLandscape {
+                        // LANDSCAPE LAYOUT (Split View)
+                        // Using a GeometryReader here to strictly enforce the split ratio
+                        GeometryReader { innerGeo in
                             HStack(spacing: 0) {
                                 // Left Side: Art (Centered vertically)
                                 ZStack {
                                     nowPlayingSection(geometry: geometry, isLandscape: true, scale: scale)
                                 }
-                                // Use Split Ratio from Config
-                                .frame(width: geometry.size.width * config.splitViewRatio, height: geometry.size.height)
+                                .frame(width: innerGeo.size.width * config.splitViewRatio)
+                                .frame(maxHeight: .infinity)
 
                                 // Right Side: Controls & Info
+                                let rightPaneWidth = innerGeo.size.width * (1 - config.splitViewRatio)
                                 VStack(spacing: config.controlSpacing * scale) {
-                                    // Header inside the right pane for better ergonomics
+                                    // Header inside the right pane
                                     headerSection(scale: scale)
-                                        .padding(.top, 10 * scale)
 
                                     Spacer()
 
@@ -55,91 +60,102 @@ struct ContentView: View {
                                     timeSliderView(scale: scale)
                                         .padding(.horizontal)
 
-                                    controlSection(scale: scale, geometry: geometry)
+                                    // Pass explicit width so spacing is calculated relative to PANE, not Screen
+                                    controlSection(scale: scale, availableWidth: rightPaneWidth)
 
                                     Spacer()
                                 }
-                                // Remaining width for controls
-                                .frame(width: geometry.size.width * (1.0 - config.splitViewRatio), height: geometry.size.height)
-                                // Apply Safe Area Insets specifically for the right edge
-                                .padding(.trailing, safeInsets.trailing)
-                                .padding(.leading, 10)
+                                .frame(width: rightPaneWidth)
+                                .frame(maxHeight: .infinity)
                             }
-                        } else {
-                            // PORTRAIT LAYOUT (Original VStack)
-                            VStack(spacing: config.controlSpacing * scale) {
-                                headerSection(scale: scale)
-                                Spacer()
-
-                                nowPlayingSection(geometry: geometry, isLandscape: false, scale: scale)
-
-                                trackInfoSection(scale: scale)
-
-                                timeSliderView(scale: scale)
-                                    .padding(.horizontal)
-
-                                controlSection(scale: scale, geometry: geometry)
-                                Spacer()
-                            }
-                            .padding()
-                            // Safe Area Handling for iPad/iPhone
-                            .padding(.top, safeInsets.top)
-                            .padding(.bottom, safeInsets.bottom > 0 ? 0 : 20)
                         }
-                    }
+                    } else {
+                        // PORTRAIT LAYOUT (Original VStack)
+                        VStack(spacing: config.controlSpacing * scale) {
+                            headerSection(scale: scale)
+                            Spacer()
 
-                    // Audio List Overlay (True Floating Cards)
-                    if showSlotSelection {
-                        ZStack {
-                            // Dimmed background for focus
-                            Color.black.opacity(0.3)
-                                .edgesIgnoringSafeArea(.all)
-                                .onTapGesture {
-                                    withAnimation {
-                                        showSlotSelection = false
-                                    }
-                                }
+                            nowPlayingSection(geometry: geometry, isLandscape: false, scale: scale)
 
-                            VStack {
-                                Spacer()
-                                // No background container here anymore - just the list
-                                AudioListView(isShowing: $showSlotSelection) { selectedTrack in
-                                    audioManager.selectedTrack = selectedTrack
-                                    // MANUAL SELECTION: Always start from 0:00 (resumePlayback: false)
-                                    audioManager.loadAudio(track: selectedTrack, autoPlay: true, resumePlayback: false)
-                                    withAnimation(.easeInOut(duration: 0.3)) {
-                                        showSlotSelection = false
-                                    }
-                                }
-                                .environmentObject(audioManager)
-                                .environmentObject(themeManager)
-                                // Modern Layout: Use GeometryReader height instead of UIScreen
-                                .frame(height: geometry.size.height * 0.75)
-                                .transition(.move(edge: .bottom))
-                            }
-                            .edgesIgnoringSafeArea(.bottom)
+                            trackInfoSection(scale: scale)
+
+                            timeSliderView(scale: scale)
+                                .padding(.horizontal)
+
+                            // Pass explicit width
+                            controlSection(scale: scale, availableWidth: geometry.size.width)
+                            Spacer()
                         }
-                        .zIndex(2)
-                    }
-
-                    // Loading Overlay
-                    if audioManager.isLoading {
-                        LoadingView()
-                            // themeManager is automatically inherited, but explicit injection is safe
-                            .environmentObject(themeManager)
-                            .transition(.opacity)
                     }
                 }
-                .toolbar(.hidden, for: .navigationBar)
-                .alert(isPresented: $audioManager.showError) {
-                    Alert(
-                        title: Text("Fehler"),
-                        message: Text(audioManager.errorMessage ?? "Unbekannter Fehler"),
-                        dismissButton: .default(Text("OK"))
-                    )
+                .padding(containerPadding) // Apply the strict "Window" padding
+                .frame(width: geometry.size.width, height: geometry.size.height) // Match Geometry Size
+
+                // Layer 3: Audio List Overlay (True Floating Modal)
+                if showSlotSelection {
+                    ZStack {
+                        // Dimmed background for focus
+                        Color.black.opacity(0.4)
+                            .edgesIgnoringSafeArea(.all)
+                            .onTapGesture {
+                                withAnimation {
+                                    showSlotSelection = false
+                                }
+                            }
+
+                        // The List Card
+                        VStack {
+                            // The List View itself
+                            AudioListView(isShowing: $showSlotSelection) { selectedTrack in
+                                audioManager.selectedTrack = selectedTrack
+                                // MANUAL SELECTION: Always start from 0:00 (resumePlayback: false)
+                                audioManager.loadAudio(track: selectedTrack, autoPlay: true, resumePlayback: false)
+                                withAnimation(.easeInOut(duration: 0.3)) {
+                                    showSlotSelection = false
+                                }
+                            }
+                            .environmentObject(audioManager)
+                            .environmentObject(themeManager)
+                        }
+                        // 80% Requirement: Force size relative to screen
+                        .frame(
+                            width: geometry.size.width * 0.8,
+                            height: geometry.size.height * 0.8
+                        )
+                        .background(
+                            ZStack {
+                                // Solid Material Background to hide content underneath
+                                if themeManager.isDarkMode {
+                                    Color.black.opacity(0.6)
+                                        .background(.ultraThinMaterial)
+                                } else {
+                                    Color.white.opacity(0.8)
+                                        .background(.ultraThinMaterial)
+                                }
+                            }
+                            .clipShape(RoundedRectangle(cornerRadius: 24))
+                            .shadow(radius: 20)
+                        )
+                        .transition(.scale(scale: 0.9).combined(with: .opacity))
+                    }
+                    .zIndex(2)
+                }
+
+                // Layer 4: Loading Overlay
+                if audioManager.isLoading {
+                    LoadingView()
+                        .environmentObject(themeManager)
+                        .transition(.opacity)
+                        .zIndex(3)
                 }
             }
-            .navigationViewStyle(StackNavigationViewStyle()) // Force stack on iPad
+            .alert(isPresented: $audioManager.showError) {
+                Alert(
+                    title: Text("Fehler"),
+                    message: Text(audioManager.errorMessage ?? "Unbekannter Fehler"),
+                    dismissButton: .default(Text("OK"))
+                )
+            }
         }
         .edgesIgnoringSafeArea(.all) // Ensure GeometryReader covers the full screen (Edge-to-Edge)
     }
@@ -183,11 +199,10 @@ struct ContentView: View {
     private func nowPlayingSection(geometry: GeometryProxy, isLandscape: Bool, scale: CGFloat) -> some View {
         // Dynamic Sizing logic via Manager
         let config = layoutManager.config
-        // Landscape: Constrain by height primarily (to fit in left pane)
-        // Portrait: Constrain by width primarily
-        let dimension = isLandscape ? geometry.size.height : geometry.size.width
-        let scaleFactor = isLandscape ? config.artScaleFactor : 0.7
-        // Removed hard cap of 350. Size now scales strictly with screen dimension.
+
+        // Calculate available space in the container (roughly)
+        let dimension = min(geometry.size.width, geometry.size.height)
+        let scaleFactor = isLandscape ? config.artScaleFactor * 0.8 : config.artScaleFactor // Slightly smaller in split view
         let size = dimension * scaleFactor
 
         return ZStack {
@@ -230,7 +245,6 @@ struct ContentView: View {
         }
         // Strict Aspect Ratio to prevent oval stretching
         .aspectRatio(1, contentMode: .fit)
-        .padding(.bottom, isLandscape ? 0 : 20 * scale) // Remove bottom padding in landscape to center it better
     }
 
     // MARK: - Track Info Section
@@ -267,7 +281,7 @@ struct ContentView: View {
     
     // MARK: - Time Slider
     private func timeSliderView(scale: CGFloat) -> some View {
-        VStack(spacing: 8 * scale) {
+        VStack(spacing: 4 * scale) {
             NeumorphicSlider(
                 value: $audioManager.currentTime,
                 inRange: 0...max(audioManager.duration, 0.01), // Prevent 0 range
@@ -277,22 +291,24 @@ struct ContentView: View {
                 isDarkMode: themeManager.isDarkMode
             )
             
+            // Time Labels below the ends
             HStack {
                 Text(timeString(time: audioManager.currentTime))
-                    .monospacedDigit() // Fixed width numbers
+                    .monospacedDigit()
                 Spacer()
                 Text(timeString(time: audioManager.duration))
-                    .monospacedDigit() // Fixed width numbers
+                    .monospacedDigit()
             }
-            .font(.system(size: 12 * scale, weight: .medium)) // Slightly clearer font
+            .font(.system(size: 12 * scale, weight: .medium)) // Improved font size
             .foregroundStyle(themeManager.isDarkMode ? .white.opacity(0.6) : .gray)
         }
     }
     
     // MARK: - Control Section
-    private func controlSection(scale: CGFloat, geometry: GeometryProxy) -> some View {
-        // Dynamic Spacing based on screen width
-        let dynamicSpacing = geometry.size.width * 0.1 // 10% of screen width
+    private func controlSection(scale: CGFloat, availableWidth: CGFloat) -> some View {
+        // Dynamic Spacing based on available width (pane width in landscape)
+        // We use a conservative 10% of the PANE width to prevent buttons flying apart
+        let dynamicSpacing = availableWidth * 0.1
 
         return HStack(spacing: dynamicSpacing) {
             Button(action: {
@@ -331,8 +347,6 @@ struct ContentView: View {
                         .stroke(themeManager.isDarkMode ? Color.white.opacity(0.1) : Color.white.opacity(0.4), lineWidth: 1)
                 )
         )
-        // Prevent button spread on iPad - Fixed size removed to allow growth, or make it dynamic
-        // .fixedSize(horizontal: true, vertical: false) // REMOVED to allow expansion
     }
     
     // MARK: - Helper Methods
