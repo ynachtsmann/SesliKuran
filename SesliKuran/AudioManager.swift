@@ -26,9 +26,8 @@ final class AudioManager: NSObject, ObservableObject, AVAudioPlayerDelegate {
     private var progressTask: Task<Void, Never>?
     private var heartbeatTask: Task<Void, Never>?
 
-    // Retry Logic (Self-Healing)
-    private var skipCount: Int = 0
-    private let maxSkips: Int = 3
+    // Retry Logic (Manual Control)
+    private var failedTrackID: Int? = nil
 
     // Background Launch Protection (Ghost Audio Fix)
     // Prevents auto-play when app is launched in background (e.g. by Car Bluetooth)
@@ -165,7 +164,7 @@ final class AudioManager: NSObject, ObservableObject, AVAudioPlayerDelegate {
                 }
 
                 self.isLoading = false
-                self.skipCount = 0 // Reset error counter on success
+                self.failedTrackID = nil // Reset error counter on success
             }
 
         } catch {
@@ -192,7 +191,13 @@ final class AudioManager: NSObject, ObservableObject, AVAudioPlayerDelegate {
     }
 
     func togglePlayPause() {
-        isPlaying ? pause() : play()
+        if let _ = audioPlayer {
+            isPlaying ? pause() : play()
+        } else if let track = selectedTrack {
+            // RETRY: Attempt to load the track again if player is missing (e.g. after error)
+            // Use resumePlayback: true to try and stay at the same position if possible
+            loadAudio(track: track, autoPlay: true, resumePlayback: true)
+        }
         triggerHaptic()
     }
 
@@ -312,22 +317,26 @@ final class AudioManager: NSObject, ObservableObject, AVAudioPlayerDelegate {
     private func handleLoadError(error: AppError) {
         print("AudioManager Error: \(error.localizedDescription)")
 
-        // Self-Healing: Attempt to skip to next track if one fails
-        if skipCount < maxSkips {
-            skipCount += 1
-            // Use Task.sleep for delay
-            Task {
-                try? await Task.sleep(nanoseconds: 500_000_000) // 0.5s
-                self.nextTrack()
-            }
+        // Stop Tasks
+        self.isLoading = false
+        self.isPlaying = false
+        stopTasks()
+
+        // Determine if this is a retry failure
+        let trackName = selectedTrack?.name ?? "Unbekannt"
+
+        if let currentID = selectedTrack?.id, currentID == failedTrackID {
+            // Retry failed
+            self.errorMessage = "Die Sure \(trackName) kann trotz erneutem Versuch nicht abgespielt werden."
         } else {
-            // Give up
-            self.isLoading = false
-            self.isPlaying = false
-            self.errorMessage = error.localizedDescription
-            self.showError = true
-            stopTasks()
+            // First failure
+            self.errorMessage = "Die Audiodatei für Sure \(trackName) wurde nicht gefunden."
+            if let currentID = selectedTrack?.id {
+                self.failedTrackID = currentID
+            }
         }
+
+        self.showError = true
     }
     
     // MARK: - Sleep Timer
@@ -566,15 +575,27 @@ final class AudioManager: NSObject, ObservableObject, AVAudioPlayerDelegate {
                 self.nextTrack()
             } else {
                 // Playback finished but failed?
-                // Self-Healing: Treat as corrupt end, skip to next.
-                print("Audio finished unsuccessfully. Attempting skip.")
-                if self.skipCount < self.maxSkips {
-                    self.skipCount += 1
-                    self.nextTrack()
+                print("Audio finished unsuccessfully.")
+
+                // Save position to stay at the "same place"
+                self.saveCurrentPosition()
+
+                self.isPlaying = false
+                self.stopTasks()
+                self.audioPlayer = nil // Force reload on retry
+
+                let trackName = self.selectedTrack?.name ?? "Unbekannt"
+
+                if let currentID = self.selectedTrack?.id, currentID == self.failedTrackID {
+                     self.errorMessage = "Die Sure \(trackName) kann trotz erneutem Versuch nicht abgespielt werden."
                 } else {
-                    self.isPlaying = false
-                    self.stopTasks()
+                    self.errorMessage = "Fehler beim Abspielen von Sure \(trackName)."
+                    if let currentID = self.selectedTrack?.id {
+                        self.failedTrackID = currentID
+                    }
                 }
+
+                self.showError = true
             }
         }
     }
@@ -582,17 +603,26 @@ final class AudioManager: NSObject, ObservableObject, AVAudioPlayerDelegate {
     nonisolated func audioPlayerDecodeErrorDidOccur(_ player: AVAudioPlayer, error: Error?) {
         Task { @MainActor in
             print("Decode error: \(String(describing: error))")
-            // Graceful Degradation: Skip corrupt file automatically
-            if self.skipCount < self.maxSkips {
-                self.skipCount += 1
-                try? await Task.sleep(nanoseconds: 500_000_000)
-                self.nextTrack()
+
+            // Save position to stay at the "same place"
+            self.saveCurrentPosition()
+
+            self.isPlaying = false
+            self.stopTasks()
+            self.audioPlayer = nil // Force reload on retry
+
+            let trackName = self.selectedTrack?.name ?? "Unbekannt"
+
+            if let currentID = self.selectedTrack?.id, currentID == self.failedTrackID {
+                 self.errorMessage = "Die Sure \(trackName) kann trotz erneutem Versuch nicht abgespielt werden."
             } else {
-                self.isPlaying = false
-                self.stopTasks()
-                self.errorMessage = "Wiedergabefehler: Datei beschädigt."
-                self.showError = true
+                self.errorMessage = "Wiedergabefehler bei Sure \(trackName)."
+                if let currentID = self.selectedTrack?.id {
+                    self.failedTrackID = currentID
+                }
             }
+
+            self.showError = true
         }
     }
     
