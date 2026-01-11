@@ -43,9 +43,9 @@ class ThemeManager: ObservableObject {
     }
     
     init() {
-        // Load initial state SYNCHRONOUSLY to prevent theme flash.
-        // This is safe because it's a read-only op on startup.
-        let settings = PersistenceManager.shared.loadSynchronously()
-        self._isDarkMode = Published(initialValue: settings.isDarkMode)
+        // FORCE DARK MODE ON STARTUP (User Requirement)
+        // We explicitly ignore the saved 'isDarkMode' value to ensure the app always starts with the Aurora/Dark theme.
+        // Runtime toggles (via the button) will still work and save to persistence, but are reset on next launch.
+        self._isDarkMode = Published(initialValue: true)
     }
 }
