@@ -154,7 +154,7 @@ struct NeumorphicSlider: View {
                  let progress = rangeDistance > 0 ? CGFloat((value - inRange.lowerBound) / rangeDistance) : 0
 
                  Circle()
-                     .fill(Color.white)
+                     .fill(ThemeColors.buttonForeground(isDarkMode: isDarkMode))
                      .frame(width: 16, height: 16)
                      .shadow(radius: 4)
                      .position(
