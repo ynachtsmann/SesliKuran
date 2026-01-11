@@ -10,23 +10,19 @@ struct ContentView: View {
     @EnvironmentObject private var themeManager: ThemeManager
     @State private var showSlotSelection = false
     
-    // MARK: - Helper Methods for Dynamic Scaling
-    // Calculates a scale factor based on the screen width relative to a base iPhone width (e.g., 390pt)
-    private func dynamicScale(in size: CGSize) -> CGFloat {
-        // Base width for iPhone 12/13/14
-        let baseWidth: CGFloat = 390.0
-        // Use the smaller dimension to ensure consistent scaling in both portrait and landscape
-        let minDimension = min(size.width, size.height)
-        // Clamp the scale to avoid extreme values, but allow significant growth for iPad
-        // Minimum 0.8 (iPhone SE), Maximum 2.5 (iPad Pro)
-        return max(0.8, min(minDimension / baseWidth, 2.5))
-    }
+    // MARK: - Layout Management
+    // Centralized Layout Manager for Device-Specific Constants
+    private let layoutManager = DeviceLayoutManager.shared
 
     // MARK: - Body
     var body: some View {
         GeometryReader { geometry in
             let isLandscape = geometry.size.width > geometry.size.height
-            let scale = dynamicScale(in: geometry.size)
+            // Use Manager's adaptive scale
+            let scale = layoutManager.adaptiveScale(in: geometry.size)
+            // Retrieve Safe Area Insets with extra margin for Landscape
+            let safeInsets = layoutManager.safeAreaInsets(for: geometry, isLandscape: isLandscape)
+            let config = layoutManager.config
 
             NavigationView {
                 ZStack(alignment: .topLeading) {
@@ -43,10 +39,11 @@ struct ContentView: View {
                                 ZStack {
                                     nowPlayingSection(geometry: geometry, isLandscape: true, scale: scale)
                                 }
-                                .frame(width: geometry.size.width * 0.45, height: geometry.size.height)
+                                // Use Split Ratio from Config
+                                .frame(width: geometry.size.width * config.splitViewRatio, height: geometry.size.height)
 
                                 // Right Side: Controls & Info
-                                VStack(spacing: 20 * scale) {
+                                VStack(spacing: config.controlSpacing * scale) {
                                     // Header inside the right pane for better ergonomics
                                     headerSection(scale: scale)
                                         .padding(.top, 10 * scale)
@@ -62,13 +59,15 @@ struct ContentView: View {
 
                                     Spacer()
                                 }
-                                .frame(width: geometry.size.width * 0.55, height: geometry.size.height)
-                                .padding(.trailing, geometry.safeAreaInsets.trailing > 0 ? geometry.safeAreaInsets.trailing : 20)
+                                // Remaining width for controls
+                                .frame(width: geometry.size.width * (1.0 - config.splitViewRatio), height: geometry.size.height)
+                                // Apply Safe Area Insets specifically for the right edge
+                                .padding(.trailing, safeInsets.trailing)
                                 .padding(.leading, 10)
                             }
                         } else {
                             // PORTRAIT LAYOUT (Original VStack)
-                            VStack(spacing: 20 * scale) {
+                            VStack(spacing: config.controlSpacing * scale) {
                                 headerSection(scale: scale)
                                 Spacer()
 
@@ -84,8 +83,8 @@ struct ContentView: View {
                             }
                             .padding()
                             // Safe Area Handling for iPad/iPhone
-                            .padding(.top, geometry.safeAreaInsets.top)
-                            .padding(.bottom, geometry.safeAreaInsets.bottom > 0 ? 0 : 20)
+                            .padding(.top, safeInsets.top)
+                            .padding(.bottom, safeInsets.bottom > 0 ? 0 : 20)
                         }
                     }
 
@@ -182,11 +181,12 @@ struct ContentView: View {
     
     // MARK: - Now Playing Section (Art)
     private func nowPlayingSection(geometry: GeometryProxy, isLandscape: Bool, scale: CGFloat) -> some View {
-        // Dynamic Sizing logic:
+        // Dynamic Sizing logic via Manager
+        let config = layoutManager.config
         // Landscape: Constrain by height primarily (to fit in left pane)
         // Portrait: Constrain by width primarily
         let dimension = isLandscape ? geometry.size.height : geometry.size.width
-        let scaleFactor = isLandscape ? 0.65 : 0.7
+        let scaleFactor = isLandscape ? config.artScaleFactor : 0.7
         // Removed hard cap of 350. Size now scales strictly with screen dimension.
         let size = dimension * scaleFactor
 
@@ -276,16 +276,16 @@ struct ContentView: View {
                 },
                 isDarkMode: themeManager.isDarkMode
             )
-            // .padding(.horizontal) // Handled by parent now
             
             HStack {
                 Text(timeString(time: audioManager.currentTime))
+                    .monospacedDigit() // Fixed width numbers
                 Spacer()
                 Text(timeString(time: audioManager.duration))
+                    .monospacedDigit() // Fixed width numbers
             }
-            .font(.system(size: 12 * scale)) // Replaces .caption
+            .font(.system(size: 12 * scale, weight: .medium)) // Slightly clearer font
             .foregroundStyle(themeManager.isDarkMode ? .white.opacity(0.6) : .gray)
-            // .padding(.horizontal) // Handled by parent now
         }
     }
     

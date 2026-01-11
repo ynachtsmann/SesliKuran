@@ -117,12 +117,12 @@ struct NeumorphicSlider: View {
     var body: some View {
         GeometryReader { geometry in
             ZStack(alignment: .leading) {
-                // Track
+                // Track - SLEEKER DESIGN (Thinner)
                 Capsule()
-                    .fill(isDarkMode ? Color.black.opacity(0.2) : Color.black.opacity(0.05))
-                    .frame(height: 6)
+                    .fill(isDarkMode ? Color.white.opacity(0.1) : Color.black.opacity(0.05))
+                    .frame(height: 4) // Reduced from 6 to 4 for a more refined look
 
-                // Progress
+                // Progress - Gradient Fill
                 // Defensive: Guard against Division by Zero
                 let rangeDistance = inRange.upperBound - inRange.lowerBound
                 let progress = rangeDistance > 0 ? CGFloat((value - inRange.lowerBound) / rangeDistance) : 0
@@ -135,9 +135,9 @@ struct NeumorphicSlider: View {
                             endPoint: .trailing
                         )
                     )
-                    .frame(width: geometry.size.width * progress, height: 6)
+                    .frame(width: geometry.size.width * progress, height: 4) // Reduced height
             }
-            .frame(height: 44) // Ensure visual center alignment
+            .frame(height: 44) // Keep 44pt height for easy tapping
             .contentShape(Rectangle()) // Make the whole area tappable
         }
         .frame(height: 44) // Tappable area height
@@ -146,7 +146,7 @@ struct NeumorphicSlider: View {
                 .accentColor(.clear) // Hide default knob color
                 .opacity(0.05) // Invisible but interactable
         )
-        // Visible custom knob
+        // Visible custom knob - Slightly smaller for elegance
         .overlay(
              GeometryReader { geometry in
                  // Defensive: Guard against Division by Zero
@@ -155,8 +155,8 @@ struct NeumorphicSlider: View {
 
                  Circle()
                      .fill(ThemeColors.buttonForeground(isDarkMode: isDarkMode))
-                     .frame(width: 16, height: 16)
-                     .shadow(radius: 4)
+                     .frame(width: 12, height: 12) // Reduced from 16 to 12
+                     .shadow(radius: 2)
                      .position(
                         x: geometry.size.width * progress,
                         y: geometry.size.height / 2
