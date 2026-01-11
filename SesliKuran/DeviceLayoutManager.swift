@@ -22,7 +22,7 @@ struct LayoutConfig {
     /// Standard iPhone Configuration
     static let standard = LayoutConfig(
         contentMargin: 20,
-        landscapeSideMargin: 48,
+        landscapeSideMargin: 56, // Aggressive margin to clear notch/island
         artScaleFactor: 0.7,
         controlSpacing: 20,
         splitViewRatio: 0.45
@@ -77,30 +77,35 @@ final class DeviceLayoutManager {
         let safeArea = geometry.safeAreaInsets
         let config = self.config
 
-        // Horizontal: Ensure we clear the notch/dynamic island + have a pleasant margin.
-        // In Landscape, the notch is on the side, so we need a larger minimum margin.
-        let horizontalBase = isLandscape ? max(safeArea.leading, safeArea.trailing) : 0
-        // If landscape, use the larger landscape margin. If portrait, use standard content margin.
-        let horizontalExtra = isLandscape ? config.landscapeSideMargin : config.contentMargin
+        // Defensive: If safeArea is reported as 0 (due to edgesIgnoringSafeArea on parent),
+        // we MUST enforce a hard minimum based on the device config.
 
-        // We take the MAX of the physical safe area or our designed margin to be safe.
-        // Actually, we want (Safe Area + Margin).
-        // Let's allow the Safe Area to handle the "Hardware" part, and add our "Design" margin on top.
+        // Use the MAX of the actual safe area OR our hardcoded margin.
+        // This guarantees that even if the system reports 0, we still have 56pt (or similar) padding.
 
-        let top = safeArea.top + (isLandscape ? 10 : config.contentMargin) // Less top padding in landscape to save height
-        let bottom = safeArea.bottom + (isLandscape ? 10 : config.contentMargin)
+        // Side Padding Logic:
+        // In Landscape: Ensure we clear the Notch/Island (usually ~47pt). We use 56pt to be safe.
+        // In Portrait: Standard content margin (20pt).
+        let minSideMargin: CGFloat = isLandscape ? config.landscapeSideMargin : config.contentMargin
 
-        // For sides:
-        // In Landscape: The Safe Area ALREADY excludes the notch.
-        // We just need to add our aesthetic margin on top of that.
-        let leading = safeArea.leading + (isLandscape ? 10 : config.contentMargin)
-        let trailing = safeArea.trailing + (isLandscape ? 10 : config.contentMargin)
+        let finalLeading = max(safeArea.leading + config.contentMargin, minSideMargin)
+        let finalTrailing = max(safeArea.trailing + config.contentMargin, minSideMargin)
+
+        // Vertical Padding Logic:
+        // Top: Usually ~47pt on iPhone X+, but check safe area.
+        // Bottom: Home bar needs clearance (~34pt).
+        // If system reports 0, we default to 20pt margin to avoid sticking to edge.
+        let safeTop = safeArea.top > 0 ? safeArea.top : (isLandscape ? 20 : 47)
+        let safeBottom = safeArea.bottom > 0 ? safeArea.bottom : 20
+
+        let finalTop = safeTop + 10 // Add a little breathing room
+        let finalBottom = safeBottom + 10
 
         return EdgeInsets(
-            top: top,
-            leading: leading,
-            bottom: bottom,
-            trailing: trailing
+            top: finalTop,
+            leading: finalLeading,
+            bottom: finalBottom,
+            trailing: finalTrailing
         )
     }
 }

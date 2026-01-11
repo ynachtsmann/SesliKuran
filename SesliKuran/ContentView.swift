@@ -16,13 +16,14 @@ struct ContentView: View {
 
     // MARK: - Body
     var body: some View {
+        // Outer GeometryReader primarily for screen size
         GeometryReader { geometry in
             let isLandscape = geometry.size.width > geometry.size.height
             // Use Manager's adaptive scale
             let scale = layoutManager.adaptiveScale(in: geometry.size)
             let config = layoutManager.config
 
-            // Calculate Safe Container Padding (Safe Area + Margins)
+            // Calculate Safe Container Padding (Strict Mode)
             let containerPadding = layoutManager.safeContainerPadding(for: geometry, isLandscape: isLandscape)
 
             ZStack {
@@ -31,38 +32,42 @@ struct ContentView: View {
                     .edgesIgnoringSafeArea(.all)
 
                 // Layer 2: Main Content Container (Strictly Windowed)
-                // We do NOT use edgesIgnoringSafeArea here.
                 // We apply explicit padding to create the "Safe Window".
+                // This ZStack acts as the "Safe Area" where all controls live.
                 ZStack {
                     if isLandscape {
                         // LANDSCAPE LAYOUT (Split View)
-                        HStack(spacing: 0) {
-                            // Left Side: Art (Centered vertically)
-                            ZStack {
-                                nowPlayingSection(geometry: geometry, isLandscape: true, scale: scale)
+                        // Using a GeometryReader here to strictly enforce the split ratio
+                        GeometryReader { innerGeo in
+                            HStack(spacing: 0) {
+                                // Left Side: Art (Centered vertically)
+                                ZStack {
+                                    nowPlayingSection(geometry: geometry, isLandscape: true, scale: scale)
+                                }
+                                .frame(width: innerGeo.size.width * config.splitViewRatio)
+                                .frame(maxHeight: .infinity)
+
+                                // Right Side: Controls & Info
+                                let rightPaneWidth = innerGeo.size.width * (1 - config.splitViewRatio)
+                                VStack(spacing: config.controlSpacing * scale) {
+                                    // Header inside the right pane
+                                    headerSection(scale: scale)
+
+                                    Spacer()
+
+                                    trackInfoSection(scale: scale)
+
+                                    timeSliderView(scale: scale)
+                                        .padding(.horizontal)
+
+                                    // Pass explicit width so spacing is calculated relative to PANE, not Screen
+                                    controlSection(scale: scale, availableWidth: rightPaneWidth)
+
+                                    Spacer()
+                                }
+                                .frame(width: rightPaneWidth)
+                                .frame(maxHeight: .infinity)
                             }
-                            // Use Split Ratio from Config
-                            .frame(width: (geometry.size.width - containerPadding.leading - containerPadding.trailing) * config.splitViewRatio)
-                            .frame(maxHeight: .infinity)
-
-                            // Right Side: Controls & Info
-                            VStack(spacing: config.controlSpacing * scale) {
-                                // Header inside the right pane for better ergonomics
-                                headerSection(scale: scale)
-
-                                Spacer()
-
-                                trackInfoSection(scale: scale)
-
-                                timeSliderView(scale: scale)
-                                    .padding(.horizontal)
-
-                                controlSection(scale: scale, geometry: geometry)
-
-                                Spacer()
-                            }
-                            // Remaining width for controls
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
                         }
                     } else {
                         // PORTRAIT LAYOUT (Original VStack)
@@ -77,7 +82,8 @@ struct ContentView: View {
                             timeSliderView(scale: scale)
                                 .padding(.horizontal)
 
-                            controlSection(scale: scale, geometry: geometry)
+                            // Pass explicit width
+                            controlSection(scale: scale, availableWidth: geometry.size.width)
                             Spacer()
                         }
                     }
@@ -85,11 +91,11 @@ struct ContentView: View {
                 .padding(containerPadding) // Apply the strict "Window" padding
                 .frame(width: geometry.size.width, height: geometry.size.height) // Match Geometry Size
 
-                // Layer 3: Audio List Overlay (True Floating Cards)
+                // Layer 3: Audio List Overlay (True Floating Modal)
                 if showSlotSelection {
                     ZStack {
                         // Dimmed background for focus
-                        Color.black.opacity(0.3)
+                        Color.black.opacity(0.4)
                             .edgesIgnoringSafeArea(.all)
                             .onTapGesture {
                                 withAnimation {
@@ -97,8 +103,8 @@ struct ContentView: View {
                                 }
                             }
 
+                        // The List Card
                         VStack {
-                            Spacer()
                             // The List View itself
                             AudioListView(isShowing: $showSlotSelection) { selectedTrack in
                                 audioManager.selectedTrack = selectedTrack
@@ -110,21 +116,29 @@ struct ContentView: View {
                             }
                             .environmentObject(audioManager)
                             .environmentObject(themeManager)
-                            // Constrain height to avoid taking over full screen on iPad
-                            .frame(height: isLandscape ? geometry.size.height * 0.8 : geometry.size.height * 0.75)
-                            .frame(maxWidth: isLandscape ? 600 : .infinity) // Limit width on iPad/Landscape
-                            .background(
-                                RoundedRectangle(cornerRadius: 24)
-                                    .fill(themeManager.isDarkMode ? Color.black.opacity(0.8) : Color.white.opacity(0.95))
-                                    .shadow(radius: 20)
-                            )
-                            // Ensure it respects the container padding too, so it doesn't hit edges
-                            .padding(.bottom, containerPadding.bottom)
-                            .padding(.horizontal, isLandscape ? 0 : containerPadding.leading)
                         }
+                        // 80% Requirement: Force size relative to screen
+                        .frame(
+                            width: geometry.size.width * 0.8,
+                            height: geometry.size.height * 0.8
+                        )
+                        .background(
+                            ZStack {
+                                // Solid Material Background to hide content underneath
+                                if themeManager.isDarkMode {
+                                    Color.black.opacity(0.6)
+                                        .background(.ultraThinMaterial)
+                                } else {
+                                    Color.white.opacity(0.8)
+                                        .background(.ultraThinMaterial)
+                                }
+                            }
+                            .clipShape(RoundedRectangle(cornerRadius: 24))
+                            .shadow(radius: 20)
+                        )
+                        .transition(.scale(scale: 0.9).combined(with: .opacity))
                     }
                     .zIndex(2)
-                    .transition(.move(edge: .bottom))
                 }
 
                 // Layer 4: Loading Overlay
@@ -285,15 +299,16 @@ struct ContentView: View {
                 Text(timeString(time: audioManager.duration))
                     .monospacedDigit()
             }
-            .font(.system(size: 11 * scale, weight: .medium)) // Slightly smaller font
+            .font(.system(size: 12 * scale, weight: .medium)) // Improved font size
             .foregroundStyle(themeManager.isDarkMode ? .white.opacity(0.6) : .gray)
         }
     }
     
     // MARK: - Control Section
-    private func controlSection(scale: CGFloat, geometry: GeometryProxy) -> some View {
-        // Dynamic Spacing based on screen width
-        let dynamicSpacing = geometry.size.width * 0.1 // 10% of screen width
+    private func controlSection(scale: CGFloat, availableWidth: CGFloat) -> some View {
+        // Dynamic Spacing based on available width (pane width in landscape)
+        // We use a conservative 10% of the PANE width to prevent buttons flying apart
+        let dynamicSpacing = availableWidth * 0.1
 
         return HStack(spacing: dynamicSpacing) {
             Button(action: {
