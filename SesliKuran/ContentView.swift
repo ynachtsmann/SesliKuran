@@ -13,32 +13,73 @@ struct ContentView: View {
     // MARK: - Body
     var body: some View {
         GeometryReader { geometry in
+            let isLandscape = geometry.size.width > geometry.size.height
+
             NavigationView {
                 ZStack(alignment: .topLeading) {
                     // Living Background - Passed Theme
                     AuroraBackgroundView(isDarkMode: themeManager.isDarkMode)
                         .edgesIgnoringSafeArea(.all)
 
-                    // Main Content
-                    VStack(spacing: 20) {
-                        headerSection
-                        Spacer()
+                    // Main Content Container
+                    Group {
+                        if isLandscape {
+                            // LANDSCAPE LAYOUT (Split View)
+                            HStack(spacing: 0) {
+                                // Left Side: Art (Centered vertically)
+                                ZStack {
+                                    nowPlayingSection(geometry: geometry, isLandscape: true)
+                                }
+                                .frame(width: geometry.size.width * 0.45, height: geometry.size.height)
 
-                        // Pass Geometry to resize the circle dynamically while keeping aspect ratio
-                        nowPlayingSection(geometry: geometry)
+                                // Right Side: Controls & Info
+                                VStack(spacing: 20) {
+                                    // Header inside the right pane for better ergonomics
+                                    headerSection
+                                        .padding(.top, 10)
 
-                        controlSection
-                        Spacer()
+                                    Spacer()
+
+                                    trackInfoSection
+
+                                    timeSliderView
+                                        .padding(.horizontal)
+
+                                    controlSection
+
+                                    Spacer()
+                                }
+                                .frame(width: geometry.size.width * 0.55, height: geometry.size.height)
+                                .padding(.trailing, geometry.safeAreaInsets.trailing > 0 ? geometry.safeAreaInsets.trailing : 20)
+                                .padding(.leading, 10)
+                            }
+                        } else {
+                            // PORTRAIT LAYOUT (Original VStack)
+                            VStack(spacing: 20) {
+                                headerSection
+                                Spacer()
+
+                                nowPlayingSection(geometry: geometry, isLandscape: false)
+
+                                trackInfoSection
+
+                                timeSliderView
+                                    .padding(.horizontal)
+
+                                controlSection
+                                Spacer()
+                            }
+                            .padding()
+                            // Safe Area Handling for iPad/iPhone
+                            .padding(.top, geometry.safeAreaInsets.top)
+                            .padding(.bottom, geometry.safeAreaInsets.bottom > 0 ? 0 : 20)
+                        }
                     }
-                    .padding()
-                    // Safe Area Handling for iPad/iPhone
-                    .padding(.top, geometry.safeAreaInsets.top)
-                    .padding(.bottom, geometry.safeAreaInsets.bottom > 0 ? 0 : 20)
 
                     // Audio List Overlay (True Floating Cards)
                     if showSlotSelection {
                         ZStack {
-                            // Dimmed background for focus, but clearer than before
+                            // Dimmed background for focus
                             Color.black.opacity(0.3)
                                 .edgesIgnoringSafeArea(.all)
                                 .onTapGesture {
@@ -122,59 +163,62 @@ struct ContentView: View {
         }
     }
     
-    // MARK: - Now Playing Section
-    private func nowPlayingSection(geometry: GeometryProxy) -> some View {
-        VStack(spacing: 25) {
-            // Cover Art / Futuristic Typography
-            // Dynamic Sizing logic:
-            // Calculate size based on min dimension to fit perfectly on both devices.
-            // Cap at 350 to prevent it becoming too massive on 12.9" iPad.
-            let size = min(geometry.size.width * 0.7, 350)
+    // MARK: - Now Playing Section (Art)
+    private func nowPlayingSection(geometry: GeometryProxy, isLandscape: Bool) -> some View {
+        // Dynamic Sizing logic:
+        // Landscape: Constrain by height primarily (to fit in left pane)
+        // Portrait: Constrain by width primarily
+        let dimension = isLandscape ? geometry.size.height : geometry.size.width
+        let scaleFactor = isLandscape ? 0.65 : 0.7
+        let size = min(dimension * scaleFactor, 350)
 
-            ZStack {
-                Circle()
-                    .fill(themeManager.isDarkMode ? Color.white.opacity(0.05) : Color.white.opacity(0.3))
-                    .frame(width: size, height: size)
-                    .overlay(
-                        Circle()
-                            .stroke(
-                                LinearGradient(
-                                    gradient: Gradient(colors: ThemeColors.gradientColors(isDarkMode: themeManager.isDarkMode)),
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                ),
-                                lineWidth: 2
-                            )
-                    )
-                    .shadow(
-                        color: ThemeColors.primaryColor(isDarkMode: themeManager.isDarkMode).opacity(0.3),
-                        radius: 20, x: 0, y: 0
-                    )
+        return ZStack {
+            Circle()
+                .fill(themeManager.isDarkMode ? Color.white.opacity(0.05) : Color.white.opacity(0.3))
+                .frame(width: size, height: size)
+                .overlay(
+                    Circle()
+                        .stroke(
+                            LinearGradient(
+                                gradient: Gradient(colors: ThemeColors.gradientColors(isDarkMode: themeManager.isDarkMode)),
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 2
+                        )
+                )
+                .shadow(
+                    color: ThemeColors.primaryColor(isDarkMode: themeManager.isDarkMode).opacity(0.3),
+                    radius: 20, x: 0, y: 0
+                )
 
-                if let selectedTrack = audioManager.selectedTrack {
-                    VStack(spacing: 5) {
-                        Text("\(selectedTrack.id)")
-                            .font(.system(size: size * 0.3, weight: .thin, design: .rounded))
-                            .foregroundStyle(themeManager.isDarkMode ? .white : .black.opacity(0.8))
-                            .shadow(color: themeManager.isDarkMode ? .white.opacity(0.8) : .clear, radius: 10)
+            if let selectedTrack = audioManager.selectedTrack {
+                VStack(spacing: 5) {
+                    Text("\(selectedTrack.id)")
+                        .font(.system(size: size * 0.3, weight: .thin, design: .rounded))
+                        .foregroundStyle(themeManager.isDarkMode ? .white : .black.opacity(0.8))
+                        .shadow(color: themeManager.isDarkMode ? .white.opacity(0.8) : .clear, radius: 10)
 
-                        Text("SURAH")
-                            .font(.system(size: size * 0.05, weight: .bold, design: .monospaced))
-                            .tracking(5)
-                            .foregroundStyle(themeManager.isDarkMode ? .white.opacity(0.7) : .gray)
-                    }
-                } else {
-                    Image(systemName: "music.quarternote.3")
-                        .font(.system(size: size * 0.3))
-                        .foregroundStyle(themeManager.isDarkMode ? .white.opacity(0.5) : .gray.opacity(0.5))
+                    Text("SURAH")
+                        .font(.system(size: size * 0.05, weight: .bold, design: .monospaced))
+                        .tracking(5)
+                        .foregroundStyle(themeManager.isDarkMode ? .white.opacity(0.7) : .gray)
                 }
+            } else {
+                Image(systemName: "music.quarternote.3")
+                    .font(.system(size: size * 0.3))
+                    .foregroundStyle(themeManager.isDarkMode ? .white.opacity(0.5) : .gray.opacity(0.5))
             }
-            // Strict Aspect Ratio to prevent oval stretching
-            .aspectRatio(1, contentMode: .fit)
-            .padding(.bottom, 20)
-            
-            // Text Info
-            // Defensive Coding: Handle nil selectedTrack gracefully
+        }
+        // Strict Aspect Ratio to prevent oval stretching
+        .aspectRatio(1, contentMode: .fit)
+        .padding(.bottom, isLandscape ? 0 : 20) // Remove bottom padding in landscape to center it better
+    }
+
+    // MARK: - Track Info Section
+    private var trackInfoSection: some View {
+        // Defensive Coding: Handle nil selectedTrack gracefully
+        Group {
             if let selectedTrack = audioManager.selectedTrack {
                 VStack(spacing: 8) {
                     Text("\(selectedTrack.name) - \(selectedTrack.germanName)")
@@ -183,6 +227,7 @@ struct ContentView: View {
                         .foregroundStyle(themeManager.isDarkMode ? .white : .black.opacity(0.8))
                         .lineLimit(1)
                         .shadow(radius: themeManager.isDarkMode ? 5 : 0)
+                        .minimumScaleFactor(0.8) // Allow text to shrink slightly on smaller screens
 
                     Text(selectedTrack.arabicName)
                         .font(.title3)
@@ -201,12 +246,6 @@ struct ContentView: View {
                         .foregroundStyle(themeManager.isDarkMode ? .white.opacity(0.5) : .gray.opacity(0.5))
                 }
             }
-            
-            // Slider
-            timeSliderView
-                .padding(.top, 10)
-                // Constrain slider width on iPad so it doesn't look ridiculous
-                .frame(maxWidth: 500)
         }
     }
     
@@ -221,7 +260,7 @@ struct ContentView: View {
                 },
                 isDarkMode: themeManager.isDarkMode
             )
-            .padding(.horizontal)
+            // .padding(.horizontal) // Handled by parent now
             
             HStack {
                 Text(timeString(time: audioManager.currentTime))
@@ -230,7 +269,7 @@ struct ContentView: View {
             }
             .font(.caption)
             .foregroundStyle(themeManager.isDarkMode ? .white.opacity(0.6) : .gray)
-            .padding(.horizontal)
+            // .padding(.horizontal) // Handled by parent now
         }
     }
     
@@ -248,7 +287,7 @@ struct ContentView: View {
             
             GlassyControlButton(
                 iconName: audioManager.isPlaying ? "pause.fill" : "play.fill",
-                action: { audioManager.togglePlayPause() }, // FIX: renamed playPause to togglePlayPause
+                action: { audioManager.togglePlayPause() },
                 size: 35,
                 isDarkMode: themeManager.isDarkMode
             )
