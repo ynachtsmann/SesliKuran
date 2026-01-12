@@ -18,17 +18,6 @@ struct AudioListView: View {
                     .foregroundStyle(themeManager.isDarkMode ? .white : .black.opacity(0.8))
 
                 Spacer()
-
-                Button(action: {
-                    withAnimation(.easeInOut(duration: 0.3)) {
-                        isShowing = false
-                    }
-                }) {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.title2)
-                        .foregroundStyle(themeManager.isDarkMode ? .white.opacity(0.8) : .gray)
-                        .padding()
-                }
             }
             .padding(.horizontal)
             .padding(.top, 20)

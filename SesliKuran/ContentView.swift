@@ -122,20 +122,7 @@ struct ContentView: View {
                             width: geometry.size.width * 0.8,
                             height: geometry.size.height * 0.8
                         )
-                        .background(
-                            ZStack {
-                                // Solid Material Background to hide content underneath
-                                if themeManager.isDarkMode {
-                                    Color.black.opacity(0.6)
-                                        .background(.ultraThinMaterial)
-                                } else {
-                                    Color.white.opacity(0.8)
-                                        .background(.ultraThinMaterial)
-                                }
-                            }
-                            .clipShape(RoundedRectangle(cornerRadius: 24))
-                            .shadow(radius: 20)
-                        )
+                        .background(Color.clear)
                         .transition(.scale(scale: 0.9).combined(with: .opacity))
                     }
                     .zIndex(2)
