@@ -49,10 +49,10 @@ struct SplashScreen: View {
             // using async let
 
             async let preparation: Void = audioManager.prepare()
-            async let minimumTime: Void = Task.sleep(nanoseconds: 1_500_000_000) // 1.5s
+            async let minimumTime: Void = Task.sleep(for: .milliseconds(1500)) // 1.5s
 
             // Wait for both to complete
-            _ = await (preparation, minimumTime)
+            _ = try? await (preparation, minimumTime)
 
             // Smooth transition to ContentView
             withAnimation {
