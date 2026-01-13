@@ -16,22 +16,24 @@ struct MyMusicApp: App {
     var body: some Scene {
         WindowGroup {
             ZStack {
+                // 0. Persistent Background (Seamless Transition)
+                AuroraBackgroundView(isDarkMode: themeManager.isDarkMode)
+                    .edgesIgnoringSafeArea(.all)
+
                 // 1. Main Content (Always loaded to ensure layout is ready)
+                // Content fades in smoothly over 0.8s
                 ContentView()
                     .environmentObject(themeManager)
                     .environmentObject(audioManager)
-                    .opacity(isAppReady ? 1 : 0) // Hide until ready to prevent visual glitches behind splash
+                    .opacity(isAppReady ? 1 : 0)
+                    .animation(.easeInOut(duration: 0.8), value: isAppReady)
 
                 // 2. Splash Screen Overlay
-                // We do NOT remove this view from the hierarchy immediately using 'if'
-                // to ensure the transition out is handled gracefully by the Splash's internal logic or transition.
-                // However, the user request says "Layer 2 (Top): SplashScreen".
-                // And to remove it when ready.
-
+                // Splash elements fade out as Content fades in
                 if !isAppReady {
                     SplashScreen(isAppReady: $isAppReady)
                         .environmentObject(audioManager)
-                        .transition(.opacity.animation(.easeInOut(duration: 0.5)))
+                        .transition(.opacity.animation(.easeInOut(duration: 0.8)))
                         .zIndex(1)
                 }
             }

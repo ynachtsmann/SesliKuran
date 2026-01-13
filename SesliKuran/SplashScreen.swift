@@ -13,15 +13,8 @@ struct SplashScreen: View {
     // MARK: - Body
     var body: some View {
         ZStack {
-            // 0. Solid Background Fallback (Safety Layer)
-            Color("LaunchBackgroundColor")
-                .ignoresSafeArea()
-
-            // 1. Animated Aurora Background (Forced Dark Mode for Neon Look)
-            AuroraBackgroundView(isDarkMode: true)
-                .edgesIgnoringSafeArea(.all)
-
-            // 2. Center Element (Icon + Text)
+            // 1. Center Element (Icon + Text)
+            // Background is now provided by the Root View (MyMusicApp) for seamless transition
             VStack(spacing: 20) {
                 Image(systemName: "book.fill")
                     .resizable()
