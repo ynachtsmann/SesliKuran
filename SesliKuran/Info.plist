@@ -22,8 +22,6 @@
 	<dict>
 		<key>UIColorName</key>
 		<string>LaunchBackgroundColor</string>
-		<key>UIImageName</key>
-		<string>splash</string>
 	</dict>
 </dict>
 </plist>
