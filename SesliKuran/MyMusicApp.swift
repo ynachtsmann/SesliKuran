@@ -23,10 +23,16 @@ struct MyMusicApp: App {
                     .opacity(isAppReady ? 1 : 0) // Hide until ready to prevent visual glitches behind splash
 
                 // 2. Splash Screen Overlay
+                // We do NOT remove this view from the hierarchy immediately using 'if'
+                // to ensure the transition out is handled gracefully by the Splash's internal logic or transition.
+                // However, the user request says "Layer 2 (Top): SplashScreen".
+                // And to remove it when ready.
+
                 if !isAppReady {
                     SplashScreen(isAppReady: $isAppReady)
+                        .environmentObject(audioManager)
                         .transition(.opacity.animation(.easeInOut(duration: 0.5)))
-                        .zIndex(1) // Ensure it sits on top
+                        .zIndex(1)
                 }
             }
         }

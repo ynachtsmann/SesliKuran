@@ -5,6 +5,7 @@ import SwiftUI
 struct SplashScreen: View {
     // MARK: - Properties
     @Binding var isAppReady: Bool
+    @EnvironmentObject var audioManager: AudioManager
 
     // Animation State
     @State private var isBreathing = false
@@ -12,6 +13,10 @@ struct SplashScreen: View {
     // MARK: - Body
     var body: some View {
         ZStack {
+            // 0. Solid Background Fallback (Safety Layer)
+            Color("LaunchBackgroundColor")
+                .ignoresSafeArea()
+
             // 1. Animated Aurora Background (Forced Dark Mode for Neon Look)
             AuroraBackgroundView(isDarkMode: true)
                 .edgesIgnoringSafeArea(.all)
@@ -19,7 +24,9 @@ struct SplashScreen: View {
             // 2. Center Element (Icon + Text)
             VStack(spacing: 20) {
                 Image(systemName: "book.fill")
-                    .font(.system(size: 80))
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 100) // Fixed width for responsive scaling
                     .foregroundStyle(.white)
 
                 Text("Sesli Kuran")
@@ -38,9 +45,14 @@ struct SplashScreen: View {
             }
         }
         .task {
-            // Logic: Simulate background task (e.g., loading JSON)
-            // TODO: Load real JSON here
-            try? await Task.sleep(nanoseconds: 2 * 1_000_000_000) // 2 seconds delay
+            // Parallel Execution: Wait for BOTH data loading AND minimum branding time
+            // using async let
+
+            async let preparation: Void = audioManager.prepare()
+            async let minimumTime: Void = Task.sleep(nanoseconds: 1_500_000_000) // 1.5s
+
+            // Wait for both to complete
+            _ = await (preparation, minimumTime)
 
             // Smooth transition to ContentView
             withAnimation {
