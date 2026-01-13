@@ -4,37 +4,55 @@ import SwiftUI
 // MARK: - Splash Screen
 struct SplashScreen: View {
     // MARK: - Properties
-    // Calculated background color to match Native Launch Screen (#0D0D1A)
-    // Matches Aurora top gradient start: R=0.05, G=0.05, B=0.1
-    private let launchBackgroundColor = Color("LaunchBackgroundColor")
+    @Binding var isAppReady: Bool
+
+    // Animation State
+    @State private var isBreathing = false
 
     // MARK: - Body
     var body: some View {
         ZStack {
-            // 1. Solid Base Color (Matches Native Launch Screen to prevent flashes)
-            launchBackgroundColor
+            // 1. Animated Aurora Background (Forced Dark Mode for Neon Look)
+            AuroraBackgroundView(isDarkMode: true)
                 .edgesIgnoringSafeArea(.all)
 
-            // 2. Animated Aurora Background (Forced Dark Mode)
-            AuroraBackgroundView(isDarkMode: true)
-                .transition(.opacity) // Seamless fade in if needed
+            // 2. Center Element (Icon + Text)
+            VStack(spacing: 20) {
+                Image(systemName: "book.fill")
+                    .font(.system(size: 80))
+                    .foregroundStyle(.white)
 
-            // 3. Splash Image
-            // Uses "splash" from Assets.xcassets (to be added by user)
-            Image("splash")
-                .resizable()
-                .scaledToFit()
-                // Limit size on iPad/Tablets so it doesn't overwhelm
-                .frame(maxWidth: 500, maxHeight: 500)
-                .padding()
+                Text("Sesli Kuran")
+                    .font(.title.bold()) // Elegant, bold font
+                    .foregroundStyle(.white)
+            }
+            .scaleEffect(isBreathing ? 1.05 : 1.0)
+            .opacity(isBreathing ? 1.0 : 0.8)
+            .animation(
+                .easeInOut(duration: 1.5)
+                .repeatForever(autoreverses: true),
+                value: isBreathing
+            )
+            .onAppear {
+                isBreathing = true
+            }
         }
-        .edgesIgnoringSafeArea(.all) // Ensure full screen coverage
+        .task {
+            // Logic: Simulate background task (e.g., loading JSON)
+            // TODO: Load real JSON here
+            try? await Task.sleep(nanoseconds: 2 * 1_000_000_000) // 2 seconds delay
+
+            // Smooth transition to ContentView
+            withAnimation {
+                isAppReady = true
+            }
+        }
     }
 }
 
 // MARK: - Preview
 struct SplashScreen_Previews: PreviewProvider {
     static var previews: some View {
-        SplashScreen()
+        SplashScreen(isAppReady: .constant(false))
     }
 }
