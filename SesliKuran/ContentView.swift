@@ -27,9 +27,8 @@ struct ContentView: View {
             let containerPadding = layoutManager.safeContainerPadding(for: geometry, isLandscape: isLandscape)
 
             ZStack {
-                // Layer 1: Living Background (Edges Ignored)
-                AuroraBackgroundView(isDarkMode: themeManager.isDarkMode)
-                    .edgesIgnoringSafeArea(.all)
+                // Layer 1: Removed Local Background (Provided by Root/MyMusicApp)
+                // AuroraBackgroundView is now hosted in MyMusicApp.swift for seamless transitions.
 
                 // Layer 2: Main Content Container (Strictly Windowed)
                 // We apply explicit padding to create the "Safe Window".

@@ -13,15 +13,12 @@ struct SplashScreen: View {
     // MARK: - Body
     var body: some View {
         ZStack {
-            // 0. Solid Background Fallback (Safety Layer)
-            Color("LaunchBackgroundColor")
+            // 0. Transparent Background to allow Root Aurora to show through
+            // We removed Color("LaunchBackgroundColor") and AuroraBackgroundView
+            Color.clear
                 .ignoresSafeArea()
 
-            // 1. Animated Aurora Background (Forced Dark Mode for Neon Look)
-            AuroraBackgroundView(isDarkMode: true)
-                .edgesIgnoringSafeArea(.all)
-
-            // 2. Center Element (Icon + Text)
+            // 1. Center Element (Icon + Text)
             VStack(spacing: 20) {
                 Image(systemName: "book.fill")
                     .resizable()
@@ -66,5 +63,6 @@ struct SplashScreen: View {
 struct SplashScreen_Previews: PreviewProvider {
     static var previews: some View {
         SplashScreen(isAppReady: .constant(false))
+            .background(Color.black) // For preview visibility
     }
 }
