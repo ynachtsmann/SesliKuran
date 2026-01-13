@@ -1,10 +1,27 @@
 import Foundation
 
+// MARK: - Future Construct (JSON/Metadata)
+// These structures are prepared for future implementation of the JSON-based timestamp and verse feature.
+struct SurahMetadata: Codable, Hashable, Sendable {
+    let verses: [Verse]
+    // Add other metadata fields here in the future
+}
+
+struct Verse: Codable, Hashable, Sendable, Identifiable {
+    let id: Int
+    let text: String
+    let timestamp: TimeInterval // Time in the audio file where this verse starts
+}
+
 struct Surah: Identifiable, Hashable, Sendable {
     let id: Int
     let name: String
     let arabicName: String
     let germanName: String
+
+    // Future: Optional metadata for timestamp-based navigation
+    // This allows us to keep the constant list while preparing for dynamic data injection.
+    var metadata: SurahMetadata? = nil
 }
 
 enum SurahData {

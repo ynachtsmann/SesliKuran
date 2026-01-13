@@ -43,9 +43,8 @@ class ThemeManager: ObservableObject {
     }
     
     init() {
-        // FORCE DARK MODE ON STARTUP (User Requirement)
-        // We explicitly ignore the saved 'isDarkMode' value to ensure the app always starts with the Aurora/Dark theme.
-        // Runtime toggles (via the button) will still work and save to persistence, but are reset on next launch.
-        self._isDarkMode = Published(initialValue: true)
+        // Synchronously load the saved theme preference on startup
+        let savedSettings = PersistenceManager.shared.loadSynchronously()
+        self._isDarkMode = Published(initialValue: savedSettings.isDarkMode)
     }
 }
