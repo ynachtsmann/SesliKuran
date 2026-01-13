@@ -24,20 +24,9 @@ struct MyMusicApp: App {
 
                 // 2. Splash Screen Overlay
                 if !isAppReady {
-                    SplashScreen()
+                    SplashScreen(isAppReady: $isAppReady)
                         .transition(.opacity.animation(.easeInOut(duration: 0.5)))
                         .zIndex(1) // Ensure it sits on top
-                }
-            }
-            .onAppear {
-                // Simulate loading / Wait for Persistence
-                // AudioManager loads synchronously on init, so data is likely ready.
-                // We add a deliberate delay to allow the Aurora animation to start
-                // and to ensure a smooth transition without flashing.
-                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                    withAnimation {
-                        isAppReady = true
-                    }
                 }
             }
         }
