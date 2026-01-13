@@ -147,6 +147,14 @@ actor PersistenceManager {
         return load().lastPlayedPositions["Audio \(trackId)"] ?? 0
     }
 
+    func getLastPlayedSurahId() -> Int {
+        return load().lastActiveTrackID
+    }
+
+    func getPlaybackSpeed() -> Float {
+        return load().playbackSpeed
+    }
+
     func getLastActiveTrackID() -> Int {
         return load().lastActiveTrackID
     }

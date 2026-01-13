@@ -41,30 +41,89 @@ final class AudioManager: NSObject, ObservableObject, AVAudioPlayerDelegate {
     // MARK: - Initialization
     override init() {
         super.init() // Required for NSObject
-        setupSession()
         setupRemoteCommandCenter()
         setupNotifications()
-
-        // Initial State Load (Synchronous)
-        // CRITICAL: Must be loaded before UI renders to avoid 'nil' crash on unwraps.
-        loadInitialStateSync()
     }
-    
-    private func loadInitialStateSync() {
-        // Load Settings Synchronously
-        let settings = PersistenceManager.shared.loadSynchronously()
 
-        self.playbackRate = settings.playbackSpeed
+    // MARK: - Asynchronous Preparation (The "Lazy Load" Fix)
+    func prepare() async {
+        // 1. Setup Audio Session (Background safe)
+        setupSession()
 
-        // Load Last Active Track (Default to 1 if none)
-        // Optimization: Use Dictionary O(1) or Safe Fallback
-        let lastID = settings.lastActiveTrackID
+        // 2. Load Settings Asynchronously
+        // We use the actor's async method directly to avoid blocking Main Thread
+        let lastID = await PersistenceManager.shared.getLastPlayedSurahId()
+        let speed = await PersistenceManager.shared.getPlaybackSpeed()
+
+        // 3. Update State on Main Actor
+        self.playbackRate = speed
+
+        // 4. Resolve Track
         let lastTrack = SurahData.getSurah(id: lastID) ?? SurahData.fallbackSurah
 
-        // Prepare the player without auto-playing
-        // Note: loadAudio is safe to call here as we are on MainActor and it sets state.
-        // APP LAUNCH: Resume from last saved position
-        self.loadAudio(track: lastTrack, autoPlay: false, resumePlayback: true)
+        // 5. Load Audio (Silent Failure Mode)
+        // We explicitly disable error UI here because we don't want popups on Splash Screen
+        await loadAudioSilent(track: lastTrack, resumePlayback: true)
+    }
+
+    // Special loader for App Launch that suppresses UI errors
+    private func loadAudioSilent(track: Surah, resumePlayback: Bool) async {
+        // Safe Cleanup
+        stopPlayback()
+        self.audioPlayer = nil
+        self.selectedTrack = track
+        self.isLoading = true
+
+        let filename = "Audio \(track.id)"
+
+        // Resolution
+        var fileURL = Bundle.main.url(forResource: filename, withExtension: "mp3")
+        if fileURL == nil {
+            if let docDir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {
+                let docURL = docDir.appendingPathComponent("\(filename).mp3")
+                if FileManager.default.fileExists(atPath: docURL.path) {
+                    fileURL = docURL
+                }
+            }
+        }
+
+        guard let validURL = fileURL else {
+            // SILENT FAIL: Log only
+            print("SplashScreen Warning: Audio file not found for \(filename). App will launch in empty state.")
+            self.isLoading = false
+            return
+        }
+
+        // Attempt Load OFF MAIN THREAD
+        // We use Task.detached to ensure the I/O and initialization happens on a background thread.
+        let result = await Task.detached(priority: .userInitiated) { () -> AVAudioPlayer? in
+            do {
+                let player = try AVAudioPlayer(contentsOf: validURL)
+                player.enableRate = true
+                player.prepareToPlay()
+                return player
+            } catch {
+                print("SplashScreen Warning: Audio corrupt for \(filename).")
+                return nil
+            }
+        }.value
+
+        // Back on Main Actor
+        if let player = result {
+            self.audioPlayer = player
+            player.delegate = self
+            player.rate = self.playbackRate
+            self.duration = player.duration
+
+            // Restore Position
+            let initialTime: TimeInterval = resumePlayback ? await PersistenceManager.shared.getLastPosition(for: track.id) : 0
+
+            self.currentTime = initialTime
+            self.audioPlayer?.currentTime = initialTime
+            self.updateNowPlayingInfo() // Ready but paused
+        }
+
+        self.isLoading = false
     }
 
     // MARK: - Session Configuration (Crash-Proof)
