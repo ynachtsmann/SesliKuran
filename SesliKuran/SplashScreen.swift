@@ -6,6 +6,7 @@ struct SplashScreen: View {
     // MARK: - Properties
     @Binding var isAppReady: Bool
     @EnvironmentObject var audioManager: AudioManager
+    @EnvironmentObject var themeManager: ThemeManager
 
     // Animation State
     @State private var isBreathing = false
@@ -24,11 +25,12 @@ struct SplashScreen: View {
                     .resizable()
                     .scaledToFit()
                     .frame(width: 100) // Fixed width for responsive scaling
-                    .foregroundStyle(.white)
+                    .foregroundStyle(ThemeColors.primaryColor(isDarkMode: themeManager.isDarkMode))
+                    .shadow(color: ThemeColors.primaryColor(isDarkMode: themeManager.isDarkMode).opacity(0.5), radius: 20, x: 0, y: 0)
 
                 Text("Sesli Kuran")
                     .font(.title.bold()) // Elegant, bold font
-                    .foregroundStyle(.white)
+                    .foregroundStyle(ThemeColors.primaryColor(isDarkMode: themeManager.isDarkMode))
             }
             .scaleEffect(isBreathing ? 1.05 : 1.0)
             .opacity(isBreathing ? 1.0 : 0.8)
@@ -63,6 +65,8 @@ struct SplashScreen: View {
 struct SplashScreen_Previews: PreviewProvider {
     static var previews: some View {
         SplashScreen(isAppReady: .constant(false))
+            .environmentObject(ThemeManager())
+            .environmentObject(AudioManager())
             .background(Color.black) // For preview visibility
     }
 }
