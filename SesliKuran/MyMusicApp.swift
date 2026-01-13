@@ -16,11 +16,18 @@ struct MyMusicApp: App {
     var body: some Scene {
         WindowGroup {
             ZStack {
+                // 0. Global Background (Persistent & Seamless)
+                // Hoisted to Root to ensure no animation resets during navigation/transitions
+                AuroraBackgroundView(isDarkMode: themeManager.isDarkMode)
+                    .edgesIgnoringSafeArea(.all)
+                    .zIndex(0)
+
                 // 1. Main Content (Always loaded to ensure layout is ready)
                 ContentView()
                     .environmentObject(themeManager)
                     .environmentObject(audioManager)
                     .opacity(isAppReady ? 1 : 0) // Hide until ready to prevent visual glitches behind splash
+                    .zIndex(1)
 
                 // 2. Splash Screen Overlay
                 // We do NOT remove this view from the hierarchy immediately using 'if'
@@ -32,7 +39,7 @@ struct MyMusicApp: App {
                     SplashScreen(isAppReady: $isAppReady)
                         .environmentObject(audioManager)
                         .transition(.opacity.animation(.easeInOut(duration: 0.5)))
-                        .zIndex(1)
+                        .zIndex(2)
                 }
             }
         }
