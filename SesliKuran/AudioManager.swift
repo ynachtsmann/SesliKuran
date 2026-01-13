@@ -48,7 +48,8 @@ final class AudioManager: NSObject, ObservableObject, AVAudioPlayerDelegate {
     // MARK: - Asynchronous Preparation (The "Lazy Load" Fix)
     func prepare() async {
         // 1. Setup Audio Session (Background safe)
-        setupSession()
+        // Now asynchronous to handle robust retry logic
+        await setupSession()
 
         // 2. Load Settings Asynchronously
         // We use the actor's async method directly to avoid blocking Main Thread
@@ -127,29 +128,60 @@ final class AudioManager: NSObject, ObservableObject, AVAudioPlayerDelegate {
     }
 
     // MARK: - Session Configuration (Crash-Proof)
-    private func setupSession() {
+    private func setupSession() async {
         // Robust Retry Logic for Audio Session Activation
         // This is crucial for "Crash-Proof" operation if the OS audio daemon is busy.
-        var attempt = 0
-        let maxAttempts = 3
+        // We use a progressive fallback strategy with explicit delays to resolve launch race conditions.
+
+        let session = AVAudioSession.sharedInstance()
         var success = false
 
-        // Use A2DP for high quality audio, avoiding low-quality HFP (standard Bluetooth)
-        let options: AVAudioSession.CategoryOptions = [.allowBluetoothA2DP]
-
-        while !success && attempt < maxAttempts {
+        // Attempt 1: Preferred Settings (High Quality)
+        // .playback + .spokenAudio + .allowBluetoothA2DP
+        if !success {
             do {
-                let session = AVAudioSession.sharedInstance()
-                try session.setCategory(.playback, mode: .spokenAudio, options: options)
+                try session.setCategory(.playback, mode: .spokenAudio, options: [.allowBluetoothA2DP])
                 try session.setActive(true)
                 success = true
+                print("Audio Session: Activated successfully (Preferred Configuration)")
             } catch {
-                attempt += 1
-                print("CRITICAL: Failed to setup audio session (Attempt \(attempt)): \(error)")
+                print("Audio Session Warning: Preferred config failed: \(error)")
             }
         }
 
+        // Attempt 2: Fallback (Safer Mode)
+        // Wait 200ms to let system stabilize, then try .default mode
         if !success {
+            try? await Task.sleep(for: .milliseconds(200))
+            do {
+                // Remove .spokenAudio restriction, stick to generic playback
+                try session.setCategory(.playback, mode: .default, options: [])
+                try session.setActive(true)
+                success = true
+                print("Audio Session: Activated successfully (Fallback Configuration)")
+            } catch {
+                print("Audio Session Warning: Fallback config failed: \(error)")
+            }
+        }
+
+        // Attempt 3: Last Resort (Basic Mode)
+        // Wait 500ms, then try absolute basic
+        if !success {
+            try? await Task.sleep(for: .milliseconds(500))
+            do {
+                try session.setCategory(.playback, options: [])
+                try session.setActive(true)
+                success = true
+                print("Audio Session: Activated successfully (Basic Configuration)")
+            } catch {
+                print("Audio Session CRITICAL: Basic config failed: \(error)")
+            }
+        }
+
+        // Final State Check
+        if !success {
+            // Only show error if we truly failed after 3 attempts and ~700ms delay.
+            // This prevents false positives on slow devices.
             self.errorMessage = "Audio-Hardware konnte nicht initialisiert werden. Bitte Gerät neustarten."
             self.showError = true
         }
@@ -558,7 +590,7 @@ final class AudioManager: NSObject, ObservableObject, AVAudioPlayerDelegate {
             self.audioPlayer = nil
 
             // 2. Re-initialize Session
-            self.setupSession()
+            await self.setupSession()
             self.setupRemoteCommandCenter()
 
             // 3. Restore State if possible
