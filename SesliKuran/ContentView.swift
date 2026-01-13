@@ -354,9 +354,15 @@ struct VisualEffectView: UIViewRepresentable {
 #if DEBUG
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
-        ContentView()
-            .environmentObject(AudioManager())
-            .environmentObject(ThemeManager())
+        ZStack {
+            // Mock the global background for the preview
+            AuroraBackgroundView(isDarkMode: true)
+                .edgesIgnoringSafeArea(.all)
+
+            ContentView()
+                .environmentObject(AudioManager())
+                .environmentObject(ThemeManager())
+        }
     }
 }
 #endif
