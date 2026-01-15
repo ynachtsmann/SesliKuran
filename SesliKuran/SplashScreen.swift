@@ -10,32 +10,45 @@ struct SplashScreen: View {
 
     // Animation State
     @State private var isBreathing = false
+    @State private var isBookOpen = false
 
     // MARK: - Body
     var body: some View {
         ZStack {
             // 0. Transparent Background to allow Root Aurora to show through
-            // We removed Color("LaunchBackgroundColor") and AuroraBackgroundView
             Color.clear
                 .ignoresSafeArea()
 
             // 1. Center Element (Icon + Text)
-            VStack(spacing: 20) {
-                Image(systemName: "book.fill")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 100) // Fixed width for responsive scaling
-                    .foregroundStyle(ThemeColors.primaryColor(isDarkMode: themeManager.isDarkMode))
-                    .shadow(color: ThemeColors.primaryColor(isDarkMode: themeManager.isDarkMode).opacity(0.5), radius: 20, x: 0, y: 0)
+            VStack(spacing: 30) {
+                ZStack {
+                    // Holy Glow
+                    Circle()
+                        .fill(ThemeColors.primaryColor(isDarkMode: themeManager.isDarkMode))
+                        .frame(width: 140, height: 140)
+                        .blur(radius: 60)
+                        .opacity(isBreathing ? 0.6 : 0.3)
+
+                    // Book Icon
+                    Image(systemName: isBookOpen ? "book.fill" : "book.closed.fill")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 100) // Fixed width for responsive scaling
+                        .foregroundStyle(ThemeColors.primaryColor(isDarkMode: themeManager.isDarkMode))
+                        .shadow(color: ThemeColors.primaryColor(isDarkMode: themeManager.isDarkMode).opacity(0.8), radius: 10, x: 0, y: 0)
+                }
 
                 Text("Sesli Kuran")
-                    .font(.title.bold()) // Elegant, bold font
+                    .font(.system(.title, design: .serif))
+                    .fontWeight(.bold)
+                    .fontVariant(.smallCaps)
+                    .kerning(3)
                     .foregroundStyle(ThemeColors.primaryColor(isDarkMode: themeManager.isDarkMode))
+                    .shadow(color: ThemeColors.primaryColor(isDarkMode: themeManager.isDarkMode).opacity(0.3), radius: 10)
             }
             .scaleEffect(isBreathing ? 1.05 : 1.0)
-            .opacity(isBreathing ? 1.0 : 0.8)
             .animation(
-                .easeInOut(duration: 1.5)
+                .easeInOut(duration: 2.5)
                 .repeatForever(autoreverses: true),
                 value: isBreathing
             )
@@ -44,17 +57,22 @@ struct SplashScreen: View {
             }
         }
         .task {
-            // Parallel Execution: Wait for BOTH data loading AND minimum branding time
-            // using async let
+            // Animate Book Opening
+            try? await Task.sleep(for: .milliseconds(600))
+            withAnimation(.spring(response: 0.7, dampingFraction: 0.6)) {
+                isBookOpen = true
+            }
 
+            // Parallel Execution: Wait for BOTH data loading AND minimum branding time
             async let preparation: Void = audioManager.prepare()
-            async let minimumTime: Void = Task.sleep(for: .milliseconds(1500)) // 1.5s
+            // Extended slightly to allow animation to complete gracefully
+            async let minimumTime: Void = Task.sleep(for: .milliseconds(2000))
 
             // Wait for both to complete
             _ = try? await (preparation, minimumTime)
 
             // Smooth transition to ContentView
-            withAnimation {
+            withAnimation(.easeOut(duration: 0.8)) {
                 isAppReady = true
             }
         }
