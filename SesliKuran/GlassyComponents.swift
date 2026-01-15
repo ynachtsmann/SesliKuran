@@ -7,7 +7,7 @@ struct GlassyButton: View {
     var size: CGFloat = 20
     var padding: CGFloat = 12
     var isActive: Bool = false
-    var isDarkMode: Bool = true // Added theme parameter
+    var isDarkMode: Bool // Added theme parameter
 
     var body: some View {
         Button(action: action) {
@@ -59,7 +59,7 @@ struct GlassyControlButton: View {
     let iconName: String
     let action: () -> Void
     var size: CGFloat = 40
-    var isDarkMode: Bool = true // Added theme parameter
+    var isDarkMode: Bool // Added theme parameter
 
     var body: some View {
         Button(action: action) {
@@ -112,7 +112,7 @@ struct NeumorphicSlider: View {
     @Binding var value: Double
     var inRange: ClosedRange<Double>
     var onEditingChanged: (Bool) -> Void = { _ in }
-    var isDarkMode: Bool = true // Added theme parameter
+    var isDarkMode: Bool // Added theme parameter
 
     var body: some View {
         GeometryReader { geometry in

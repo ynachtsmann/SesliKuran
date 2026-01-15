@@ -38,11 +38,14 @@ struct MyMusicApp: App {
                 if !isAppReady {
                     SplashScreen(isAppReady: $isAppReady)
                         .environmentObject(audioManager)
+                        .environmentObject(themeManager)
                         .transition(.opacity.animation(.easeInOut(duration: 0.5)))
                         .zIndex(2)
                 }
             }
         }
+        // Force the System UI Status Bar (Battery, Signal, Time) to match the App Theme
+        .preferredColorScheme(themeManager.isDarkMode ? .dark : .light)
         .onChange(of: scenePhase) { newPhase in
             switch newPhase {
             case .background, .inactive:
