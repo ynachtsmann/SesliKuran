@@ -1,5 +1,6 @@
 // MARK: - Imports
 import SwiftUI
+import UIKit
 
 // MARK: - Theme Colors
 struct ThemeColors {
@@ -38,6 +39,10 @@ class ThemeManager: ObservableObject {
             // Note: We don't check 'isLoading' here because we want manual toggles to save.
             Task {
                 await PersistenceManager.shared.updateTheme(isDarkMode: isDarkMode)
+                // Update App Icon on main actor
+                await MainActor.run {
+                    self.updateAppIcon()
+                }
             }
         }
     }
@@ -49,5 +54,28 @@ class ThemeManager: ObservableObject {
         // Synchronously load the saved theme preference on startup
         let savedSettings = PersistenceManager.shared.loadSynchronously(systemDarkMode: systemIsDark)
         self._isDarkMode = Published(initialValue: savedSettings.isDarkMode)
+
+        // Trigger initial icon check
+        Task { @MainActor in
+            self.updateAppIcon()
+        }
+    }
+
+    // MARK: - Icon Management
+    /// Updates the Home Screen App Icon based on the current theme.
+    /// Note: This triggers a system alert to the user.
+    private func updateAppIcon() {
+        // If Dark Mode: Use 'AppIcon-Dark'
+        // If Light Mode: Use nil (reverts to Primary 'AppIcon')
+        let targetIconName: String? = isDarkMode ? "AppIcon-Dark" : nil
+
+        // Avoid redundant calls (although iOS handles this, it's safer to check)
+        if UIApplication.shared.alternateIconName != targetIconName {
+            UIApplication.shared.setAlternateIconName(targetIconName) { error in
+                if let error = error {
+                    print("Error setting alternate icon: \(error.localizedDescription)")
+                }
+            }
+        }
     }
 }
