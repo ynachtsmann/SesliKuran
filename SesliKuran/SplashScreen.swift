@@ -39,11 +39,8 @@ struct SplashScreen: View {
                 }
 
                 Text("Sesli Kuran")
-                    .font(.system(.title, design: .serif))
+                    .font(.system(.title, design: .serif).smallCaps())
                     .fontWeight(.bold)
-                    // Note: .fontVariant(.smallCaps) is iOS 16+. Since deployment target is 16.0, this is valid.
-                    // If errors persist, this line can be removed.
-                    .fontVariant(.smallCaps)
                     .kerning(3)
                     .foregroundColor(ThemeColors.primaryColor(isDarkMode: themeManager.isDarkMode))
                     .shadow(color: ThemeColors.primaryColor(isDarkMode: themeManager.isDarkMode).opacity(0.3), radius: 10)
