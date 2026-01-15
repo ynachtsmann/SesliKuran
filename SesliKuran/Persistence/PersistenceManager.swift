@@ -69,14 +69,16 @@ actor PersistenceManager {
     // Synchronous Load (Startup Only)
     // Bypasses the actor's lock to provide immediate state for app initialization (e.g., Theme).
     // Safe only during init when no writes are occurring.
-    nonisolated func loadSynchronously() -> StorageData {
+    nonisolated func loadSynchronously(systemDarkMode: Bool) -> StorageData {
         do {
             let url = try fileURL()
             let data = try Data(contentsOf: url)
             return try JSONDecoder().decode(StorageData.self, from: data)
         } catch {
-            // If file doesn't exist or is corrupt, return defaults silently.
-            return StorageData()
+            // If file doesn't exist or is corrupt, return defaults with system preference.
+            var defaults = StorageData()
+            defaults.isDarkMode = systemDarkMode
+            return defaults
         }
     }
 
