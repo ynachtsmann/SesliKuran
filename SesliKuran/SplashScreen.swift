@@ -34,16 +34,18 @@ struct SplashScreen: View {
                         .resizable()
                         .scaledToFit()
                         .frame(width: 100) // Fixed width for responsive scaling
-                        .foregroundStyle(ThemeColors.primaryColor(isDarkMode: themeManager.isDarkMode))
+                        .foregroundColor(ThemeColors.primaryColor(isDarkMode: themeManager.isDarkMode))
                         .shadow(color: ThemeColors.primaryColor(isDarkMode: themeManager.isDarkMode).opacity(0.8), radius: 10, x: 0, y: 0)
                 }
 
                 Text("Sesli Kuran")
                     .font(.system(.title, design: .serif))
                     .fontWeight(.bold)
+                    // Note: .fontVariant(.smallCaps) is iOS 16+. Since deployment target is 16.0, this is valid.
+                    // If errors persist, this line can be removed.
                     .fontVariant(.smallCaps)
                     .kerning(3)
-                    .foregroundStyle(ThemeColors.primaryColor(isDarkMode: themeManager.isDarkMode))
+                    .foregroundColor(ThemeColors.primaryColor(isDarkMode: themeManager.isDarkMode))
                     .shadow(color: ThemeColors.primaryColor(isDarkMode: themeManager.isDarkMode).opacity(0.3), radius: 10)
             }
             .scaleEffect(isBreathing ? 1.05 : 1.0)
@@ -57,8 +59,8 @@ struct SplashScreen: View {
             }
         }
         .task {
-            // Animate Book Opening
-            try? await Task.sleep(for: .milliseconds(600))
+            // Animate Book Opening - Using nanoseconds for maximum compatibility
+            try? await Task.sleep(nanoseconds: 600 * 1_000_000)
             withAnimation(.spring(response: 0.7, dampingFraction: 0.6)) {
                 isBookOpen = true
             }
@@ -66,7 +68,7 @@ struct SplashScreen: View {
             // Parallel Execution: Wait for BOTH data loading AND minimum branding time
             async let preparation: Void = audioManager.prepare()
             // Extended slightly to allow animation to complete gracefully
-            async let minimumTime: Void = Task.sleep(for: .milliseconds(2000))
+            async let minimumTime: Void = Task.sleep(nanoseconds: 2_000 * 1_000_000)
 
             // Wait for both to complete
             _ = try? await (preparation, minimumTime)
