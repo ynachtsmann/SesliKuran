@@ -43,8 +43,11 @@ class ThemeManager: ObservableObject {
     }
     
     init() {
+        // Determine system preference (fallback for fresh install)
+        let systemIsDark = UITraitCollection.current.userInterfaceStyle == .dark
+
         // Synchronously load the saved theme preference on startup
-        let savedSettings = PersistenceManager.shared.loadSynchronously()
+        let savedSettings = PersistenceManager.shared.loadSynchronously(systemDarkMode: systemIsDark)
         self._isDarkMode = Published(initialValue: savedSettings.isDarkMode)
     }
 }
