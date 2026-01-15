@@ -35,6 +35,7 @@ struct SplashScreen: View {
                         .scaledToFit()
                         .frame(width: 100) // Fixed width for responsive scaling
                         .foregroundColor(ThemeColors.primaryColor(isDarkMode: themeManager.isDarkMode))
+                        .contentTransition(.symbolEffect(.replace))
                         .shadow(color: ThemeColors.primaryColor(isDarkMode: themeManager.isDarkMode).opacity(0.8), radius: 10, x: 0, y: 0)
                 }
 
