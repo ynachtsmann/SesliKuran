@@ -52,7 +52,7 @@ struct AudioListView: View {
                         }
                     }
                 }
-                .onChange(of: isShowing) { showing in
+                .onChange(of: isShowing) { _, showing in
                     if showing, let selectedId = audioManager.selectedTrack?.id {
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                             withAnimation {
@@ -146,7 +146,7 @@ struct GlassyCardRow: View {
                     }
                 }
             )
-            .cornerRadius(20)
+            .clipShape(RoundedRectangle(cornerRadius: 20))
             // Subtle scale effect for active track
             .scaleEffect(isCurrentTrack ? 1.02 : 1.0)
             .animation(.spring(), value: isCurrentTrack)

@@ -46,7 +46,7 @@ struct MyMusicApp: App {
             // Force the System UI Status Bar (Battery, Signal, Time) to match the App Theme
             .preferredColorScheme(themeManager.isDarkMode ? .dark : .light)
         }
-        .onChange(of: scenePhase) { newPhase in
+        .onChange(of: scenePhase) { _, newPhase in
             switch newPhase {
             case .background, .inactive:
                 // Mission Critical: Ensure Persistence Flush

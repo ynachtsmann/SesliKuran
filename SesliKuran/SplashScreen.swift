@@ -34,7 +34,7 @@ struct SplashScreen: View {
                         .resizable()
                         .scaledToFit()
                         .frame(width: 100) // Fixed width for responsive scaling
-                        .foregroundColor(ThemeColors.primaryColor(isDarkMode: themeManager.isDarkMode))
+                        .foregroundStyle(ThemeColors.primaryColor(isDarkMode: themeManager.isDarkMode))
                         .contentTransition(.symbolEffect(.replace))
                         .shadow(color: ThemeColors.primaryColor(isDarkMode: themeManager.isDarkMode).opacity(0.8), radius: 10, x: 0, y: 0)
                 }
@@ -43,7 +43,7 @@ struct SplashScreen: View {
                     .font(.system(.title, design: .serif).smallCaps())
                     .fontWeight(.bold)
                     .kerning(3)
-                    .foregroundColor(ThemeColors.primaryColor(isDarkMode: themeManager.isDarkMode))
+                    .foregroundStyle(ThemeColors.primaryColor(isDarkMode: themeManager.isDarkMode))
                     .shadow(color: ThemeColors.primaryColor(isDarkMode: themeManager.isDarkMode).opacity(0.3), radius: 10)
             }
             .scaleEffect(isBreathing ? 1.05 : 1.0)
