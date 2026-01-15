@@ -27,6 +27,8 @@
 	<dict>
 		<key>CFBundlePrimaryIcon</key>
 		<dict>
+			<key>CFBundleIconName</key>
+			<string>AppIcon</string>
 			<key>CFBundleIconFiles</key>
 			<array>
 				<string>AppIcon</string>
@@ -38,9 +40,11 @@
 		<dict>
 			<key>AppIcon-Dark</key>
 			<dict>
+				<key>CFBundleIconName</key>
+				<string>AppIcon-Dark</string>
 				<key>CFBundleIconFiles</key>
 				<array>
-					<string>darkicon</string>
+					<string>AppIcon-Dark</string>
 				</array>
 				<key>UIPrerenderedIcon</key>
 				<false/>
@@ -51,6 +55,8 @@
 	<dict>
 		<key>CFBundlePrimaryIcon</key>
 		<dict>
+			<key>CFBundleIconName</key>
+			<string>AppIcon</string>
 			<key>CFBundleIconFiles</key>
 			<array>
 				<string>AppIcon</string>
@@ -62,9 +68,11 @@
 		<dict>
 			<key>AppIcon-Dark</key>
 			<dict>
+				<key>CFBundleIconName</key>
+				<string>AppIcon-Dark</string>
 				<key>CFBundleIconFiles</key>
 				<array>
-					<string>darkicon</string>
+					<string>AppIcon-Dark</string>
 				</array>
 				<key>UIPrerenderedIcon</key>
 				<false/>
