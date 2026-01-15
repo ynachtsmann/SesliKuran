@@ -43,9 +43,9 @@ struct MyMusicApp: App {
                         .zIndex(2)
                 }
             }
+            // Force the System UI Status Bar (Battery, Signal, Time) to match the App Theme
+            .preferredColorScheme(themeManager.isDarkMode ? .dark : .light)
         }
-        // Force the System UI Status Bar (Battery, Signal, Time) to match the App Theme
-        .preferredColorScheme(themeManager.isDarkMode ? .dark : .light)
         .onChange(of: scenePhase) { newPhase in
             switch newPhase {
             case .background, .inactive:
