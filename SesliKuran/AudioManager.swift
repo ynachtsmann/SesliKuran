@@ -152,7 +152,7 @@ final class AudioManager: NSObject, ObservableObject, AVAudioPlayerDelegate {
         // Attempt 2: Fallback (Safer Mode)
         // Wait 200ms to let system stabilize, then try .default mode
         if !success {
-            try? await Task.sleep(for: .milliseconds(200))
+            try? await Task.sleep(nanoseconds: 200_000_000)
             do {
                 // Remove .spokenAudio restriction, stick to generic playback
                 try session.setCategory(.playback, mode: .default, options: [])
@@ -167,7 +167,7 @@ final class AudioManager: NSObject, ObservableObject, AVAudioPlayerDelegate {
         // Attempt 3: Last Resort (Basic Mode)
         // Wait 500ms, then try absolute basic
         if !success {
-            try? await Task.sleep(for: .milliseconds(500))
+            try? await Task.sleep(nanoseconds: 500_000_000)
             do {
                 try session.setCategory(.playback, options: [])
                 try session.setActive(true)

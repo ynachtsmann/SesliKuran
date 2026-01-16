@@ -20,6 +20,7 @@ struct SplashScreen: View {
                 .ignoresSafeArea()
 
             // 1. Center Element (Icon + Text)
+            // Explicitly centered and unconstrained to ensure landscape stability
             VStack(spacing: 30) {
                 ZStack {
                     // Holy Glow
@@ -46,6 +47,7 @@ struct SplashScreen: View {
                     .foregroundStyle(ThemeColors.primaryColor(isDarkMode: themeManager.isDarkMode))
                     .shadow(color: ThemeColors.primaryColor(isDarkMode: themeManager.isDarkMode).opacity(0.3), radius: 10)
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .scaleEffect(isBreathing ? 1.05 : 1.0)
             .animation(
                 .easeInOut(duration: 2.5)
