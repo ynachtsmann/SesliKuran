@@ -234,44 +234,44 @@ final class AudioManager: NSObject, ObservableObject, AVAudioPlayerDelegate {
                 player.prepareToPlay()
 
                 // Back to Main Actor for State Updates
-                await MainActor.run {
-                    guard let self = self else { return }
-
-                    self.audioPlayer = player
-                    self.audioPlayer?.delegate = self
-                    self.audioPlayer?.rate = playbackRate
-                    self.duration = player.duration
-
-                    // Restore Position Logic
-                    Task {
-                        let initialTime: TimeInterval
-
-                        if resumePlayback {
-                            // Restore from Persistence (App Launch)
-                            initialTime = await PersistenceManager.shared.getLastPosition(for: track.id)
-                        } else {
-                            // Reset to 0 (Manual Selection / Next / Prev)
-                            initialTime = 0
-                        }
-
-                        self.currentTime = initialTime
-                        self.audioPlayer?.currentTime = initialTime
-
-                        if autoPlay {
-                            self.play()
-                        } else {
-                            self.updateNowPlayingInfo()
-                        }
-
-                        self.isLoading = false
-                        self.failedTrackID = nil // Reset error counter on success
-                    }
-                }
+                await self?.applyAudioPlayerState(player: player, playbackRate: playbackRate, trackId: track.id, autoPlay: autoPlay, resumePlayback: resumePlayback)
 
             } catch {
                 await self?.handleLoadError(error: .fileCorrupt)
             }
         }
+    }
+
+    // New helper method to handle state updates on Main Actor safely
+    @MainActor
+    private func applyAudioPlayerState(player: AVAudioPlayer, playbackRate: Float, trackId: Int, autoPlay: Bool, resumePlayback: Bool) async {
+        self.audioPlayer = player
+        self.audioPlayer?.delegate = self
+        self.audioPlayer?.rate = playbackRate
+        self.duration = player.duration
+
+        // Restore Position Logic
+        let initialTime: TimeInterval
+
+        if resumePlayback {
+            // Restore from Persistence (App Launch)
+            initialTime = await PersistenceManager.shared.getLastPosition(for: trackId)
+        } else {
+            // Reset to 0 (Manual Selection / Next / Prev)
+            initialTime = 0
+        }
+
+        self.currentTime = initialTime
+        self.audioPlayer?.currentTime = initialTime
+
+        if autoPlay {
+            self.play()
+        } else {
+            self.updateNowPlayingInfo()
+        }
+
+        self.isLoading = false
+        self.failedTrackID = nil // Reset error counter on success
     }
 
     func play() {
@@ -618,17 +618,22 @@ final class AudioManager: NSObject, ObservableObject, AVAudioPlayerDelegate {
         }
     }
 
+    // Helper for Thread-Safe Background Task Identifier Storage (Swift 6 Strict Concurrency)
+    private class BackgroundTaskState: @unchecked Sendable {
+        var identifier: UIBackgroundTaskIdentifier = .invalid
+    }
+
     @objc private func handleAppBackground() {
         // Force save immediately using Background Task to ensure completion
         let app = UIApplication.shared
-        var bgTask: UIBackgroundTaskIdentifier = .invalid
+        let state = BackgroundTaskState()
 
         // Ensure robust background task handling
         // Must be called synchronously to guarantee execution time
-        bgTask = app.beginBackgroundTask {
+        state.identifier = app.beginBackgroundTask {
             // Expiration Handler: Final safety net
-            app.endBackgroundTask(bgTask)
-            bgTask = .invalid
+            app.endBackgroundTask(state.identifier)
+            state.identifier = .invalid
         }
         
         // Save Logic
@@ -638,9 +643,9 @@ final class AudioManager: NSObject, ObservableObject, AVAudioPlayerDelegate {
         Task {
             try? await Task.sleep(nanoseconds: 200_000_000) // 0.2s buffer
             
-            if bgTask != .invalid {
-                app.endBackgroundTask(bgTask)
-                bgTask = .invalid
+            if state.identifier != .invalid {
+                app.endBackgroundTask(state.identifier)
+                state.identifier = .invalid
             }
         }
     }
