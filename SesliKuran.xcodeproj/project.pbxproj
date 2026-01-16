@@ -7,6 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		51A07F9A2D1710190006B673 /* AppIcon-Dark.png in Resources */ = {isa = PBXBuildFile; fileRef = 51A07F982D1710190006B673 /* AppIcon-Dark.png */; };
+		51A07F9B2D1710190006B673 /* AppIcon-Light.png in Resources */ = {isa = PBXBuildFile; fileRef = 51A07F992D1710190006B673 /* AppIcon-Light.png */; };
+
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -27,6 +30,9 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		51A07F982D1710190006B673 /* AppIcon-Dark.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = "AppIcon-Dark.png"; path = "SesliKuran/AppIcon-Dark.png"; sourceTree = "<group>"; };
+		51A07F992D1710190006B673 /* AppIcon-Light.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = "AppIcon-Light.png"; path = "SesliKuran/AppIcon-Light.png"; sourceTree = "<group>"; };
+
 		51A07F6B2D1710190006B673 /* SesliKuran.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SesliKuran.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		51A07F7B2D1710190006B673 /* SesliKuranTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SesliKuranTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		51A07F852D1710190006B673 /* SesliKuranUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SesliKuranUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -91,6 +97,8 @@
 		51A07F622D1710190006B673 = {
 			isa = PBXGroup;
 			children = (
+				51A07F982D1710190006B673 /* AppIcon-Dark.png */,
+				51A07F992D1710190006B673 /* AppIcon-Light.png */,
 				51A07F6D2D1710190006B673 /* SesliKuran */,
 				51A07F7E2D1710190006B673 /* SesliKuranTests */,
 				51A07F882D1710190006B673 /* SesliKuranUITests */,
@@ -228,6 +236,8 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				51A07F9A2D1710190006B673 /* AppIcon-Dark.png in Resources */,
+				51A07F9B2D1710190006B673 /* AppIcon-Light.png in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
