@@ -5,6 +5,18 @@
       "filename" : "lighticon.png",
       "platform" : "ios",
       "size" : "1024x1024"
+    },
+    {
+      "appearances" : [
+        {
+          "appearance" : "luminosity",
+          "value" : "dark"
+        }
+      ],
+      "idiom" : "universal",
+      "filename" : "AppIcon-Dark.png",
+      "platform" : "ios",
+      "size" : "1024x1024"
     }
   ],
   "info" : {
