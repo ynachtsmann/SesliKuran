@@ -48,13 +48,20 @@ struct MyMusicApp: App {
         }
         .onChange(of: scenePhase) { _, newPhase in
             switch newPhase {
+            case .active:
+                // Critical: Ensure App Icon Sync on First Launch / Active
+                // If the initial sync in ThemeManager.init() failed (because app wasn't active),
+                // this ensures we retry as soon as the app is visible.
+                Task { @MainActor in
+                    themeManager.updateAppIcon()
+                }
             case .background, .inactive:
                 // Mission Critical: Ensure Persistence Flush
                 // AudioManager observes 'didEnterBackground' to save exact progress.
                 // Here we simply log the lifecycle transition for debugging/assurance.
                 // The heavy lifting is done in AudioManager to capture the exact second.
                 print("App Lifecycle: Transition to \(newPhase) - Data integrity secured.")
-            default:
+            @unknown default:
                 break
             }
         }

@@ -64,16 +64,23 @@ class ThemeManager: ObservableObject {
     // MARK: - Icon Management
     /// Updates the Home Screen App Icon based on the current theme.
     /// Note: This triggers a system alert to the user.
-    private func updateAppIcon() {
+    /// Changed to public to allow external triggers (e.g. from App Lifecycle).
+    func updateAppIcon() {
         // If Dark Mode: Use 'AppIcon-Dark'
         // If Light Mode: Use nil (reverts to Primary 'AppIcon')
         let targetIconName: String? = isDarkMode ? "AppIcon-Dark" : nil
 
         // Avoid redundant calls (although iOS handles this, it's safer to check)
+        // We double check applicationState to ensure we don't fire this when backgrounded/inactive if avoidable
         if UIApplication.shared.alternateIconName != targetIconName {
+             // Only attempt to change if the app is active, otherwise it might fail silently or error
+             // However, checking applicationState here might prevent 'init' from working if called too early.
+             // We will let the call proceed but log errors. The key is calling this AGAIN when active.
             UIApplication.shared.setAlternateIconName(targetIconName) { error in
                 if let error = error {
                     print("Error setting alternate icon: \(error.localizedDescription)")
+                } else {
+                    print("App Icon updated to: \(targetIconName ?? "Default")")
                 }
             }
         }

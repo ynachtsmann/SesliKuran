@@ -6,6 +6,11 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		51A07F000000000000000001 /* AppIcon-Light.png in Resources */ = {isa = PBXBuildFile; fileRef = 51A07F100000000000000001 /* AppIcon-Light.png */; };
+		51A07F000000000000000002 /* AppIcon-Dark.png in Resources */ = {isa = PBXBuildFile; fileRef = 51A07F100000000000000002 /* AppIcon-Dark.png */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		51A07F7C2D1710190006B673 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -24,6 +29,8 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		51A07F100000000000000001 /* AppIcon-Light.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = "AppIcon-Light.png"; path = "SesliKuran/AppIcons/AppIcon-Light.png"; sourceTree = "<group>"; };
+		51A07F100000000000000002 /* AppIcon-Dark.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = "AppIcon-Dark.png"; path = "SesliKuran/AppIcons/AppIcon-Dark.png"; sourceTree = "<group>"; };
 		51A07F6B2D1710190006B673 /* SesliKuran.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SesliKuran.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		51A07F7B2D1710190006B673 /* SesliKuranTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SesliKuranTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		51A07F852D1710190006B673 /* SesliKuranUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SesliKuranUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -92,6 +99,8 @@
 				51A07F7E2D1710190006B673 /* SesliKuranTests */,
 				51A07F882D1710190006B673 /* SesliKuranUITests */,
 				51A07F6C2D1710190006B673 /* Products */,
+				51A07F100000000000000001 /* AppIcon-Light.png */,
+				51A07F100000000000000002 /* AppIcon-Dark.png */,
 			);
 			sourceTree = "<group>";
 		};
@@ -225,6 +234,8 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				51A07F000000000000000001 /* AppIcon-Light.png in Resources */,
+				51A07F000000000000000002 /* AppIcon-Dark.png in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
