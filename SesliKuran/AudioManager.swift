@@ -202,64 +202,75 @@ final class AudioManager: NSObject, ObservableObject, AVAudioPlayerDelegate {
         self.showError = false
 
         let filename = "Audio \(track.id)"
+        // Capture simple values for the detached task
+        let playbackRate = self.playbackRate
 
-        // Robust File Resolution Strategy
-        // 1. Check Bundle (ReadOnly, Built-in)
-        var fileURL = Bundle.main.url(forResource: filename, withExtension: "mp3")
+        // REFACTOR: Logic Execution Order
+        // Heavy I/O and Player Initialization moved to Background Thread
+        Task.detached(priority: .userInitiated) { [weak self] in
+            // Robust File Resolution Strategy
+            // 1. Check Bundle (ReadOnly, Built-in)
+            var fileURL = Bundle.main.url(forResource: filename, withExtension: "mp3")
 
-        // 2. Check Documents (User Imported via iTunes/Finder)
-        if fileURL == nil {
-            if let docDir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {
-                let docURL = docDir.appendingPathComponent("\(filename).mp3")
-                if FileManager.default.fileExists(atPath: docURL.path) {
-                    fileURL = docURL
+            // 2. Check Documents (User Imported via iTunes/Finder)
+            if fileURL == nil {
+                if let docDir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first {
+                    let docURL = docDir.appendingPathComponent("\(filename).mp3")
+                    if FileManager.default.fileExists(atPath: docURL.path) {
+                        fileURL = docURL
+                    }
                 }
             }
-        }
 
-        guard let validURL = fileURL else {
-            handleLoadError(error: .fileNotFound(filename))
-            return
-        }
-
-        // Attempt Load
-        do {
-            audioPlayer = try AVAudioPlayer(contentsOf: validURL)
-            audioPlayer?.delegate = self // NOW VALID due to NSObject conformance
-            audioPlayer?.enableRate = true
-            audioPlayer?.rate = playbackRate
-            audioPlayer?.prepareToPlay()
-
-            duration = audioPlayer?.duration ?? 0
-
-            // Restore Position Logic
-            Task {
-                let initialTime: TimeInterval
-
-                if resumePlayback {
-                    // Restore from Persistence (App Launch)
-                    initialTime = await PersistenceManager.shared.getLastPosition(for: track.id)
-                } else {
-                    // Reset to 0 (Manual Selection / Next / Prev)
-                    initialTime = 0
-                }
-
-                // Ensure UI updates happen on MainActor (guaranteed by class annotation)
-                self.currentTime = initialTime
-                self.audioPlayer?.currentTime = initialTime
-
-                if autoPlay {
-                    self.play()
-                } else {
-                    self.updateNowPlayingInfo()
-                }
-
-                self.isLoading = false
-                self.failedTrackID = nil // Reset error counter on success
+            guard let validURL = fileURL else {
+                await self?.handleLoadError(error: .fileNotFound(filename))
+                return
             }
 
-        } catch {
-            handleLoadError(error: .fileCorrupt)
+            // Attempt Load
+            do {
+                let player = try AVAudioPlayer(contentsOf: validURL)
+                player.enableRate = true
+                player.prepareToPlay()
+
+                // Back to Main Actor for State Updates
+                await MainActor.run {
+                    guard let self = self else { return }
+
+                    self.audioPlayer = player
+                    self.audioPlayer?.delegate = self
+                    self.audioPlayer?.rate = playbackRate
+                    self.duration = player.duration
+
+                    // Restore Position Logic
+                    Task {
+                        let initialTime: TimeInterval
+
+                        if resumePlayback {
+                            // Restore from Persistence (App Launch)
+                            initialTime = await PersistenceManager.shared.getLastPosition(for: track.id)
+                        } else {
+                            // Reset to 0 (Manual Selection / Next / Prev)
+                            initialTime = 0
+                        }
+
+                        self.currentTime = initialTime
+                        self.audioPlayer?.currentTime = initialTime
+
+                        if autoPlay {
+                            self.play()
+                        } else {
+                            self.updateNowPlayingInfo()
+                        }
+
+                        self.isLoading = false
+                        self.failedTrackID = nil // Reset error counter on success
+                    }
+                }
+
+            } catch {
+                await self?.handleLoadError(error: .fileCorrupt)
+            }
         }
     }
 
