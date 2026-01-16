@@ -114,6 +114,12 @@ struct NeumorphicSlider: View {
     var onEditingChanged: (Bool) -> Void = { _ in }
     var isDarkMode: Bool // Added theme parameter
 
+    // Computed property to centralize progress calculation (DRY Principle)
+    private var progress: CGFloat {
+        let rangeDistance = inRange.upperBound - inRange.lowerBound
+        return rangeDistance > 0 ? CGFloat((value - inRange.lowerBound) / rangeDistance) : 0
+    }
+
     var body: some View {
         GeometryReader { geometry in
             ZStack(alignment: .leading) {
@@ -123,10 +129,6 @@ struct NeumorphicSlider: View {
                     .frame(height: 3) // Further reduced to 3 for elegance
 
                 // Progress - Gradient Fill
-                // Defensive: Guard against Division by Zero
-                let rangeDistance = inRange.upperBound - inRange.lowerBound
-                let progress = rangeDistance > 0 ? CGFloat((value - inRange.lowerBound) / rangeDistance) : 0
-
                 Capsule()
                     .fill(
                         LinearGradient(
@@ -149,10 +151,6 @@ struct NeumorphicSlider: View {
         // Visible custom knob - Refined
         .overlay(
              GeometryReader { geometry in
-                 // Defensive: Guard against Division by Zero
-                 let rangeDistance = inRange.upperBound - inRange.lowerBound
-                 let progress = rangeDistance > 0 ? CGFloat((value - inRange.lowerBound) / rangeDistance) : 0
-
                  Circle()
                      .fill(ThemeColors.buttonForeground(isDarkMode: isDarkMode))
                      .frame(width: 10, height: 10) // Reduced to 10 for very fine look
