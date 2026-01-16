@@ -49,12 +49,8 @@ struct MyMusicApp: App {
         .onChange(of: scenePhase) { _, newPhase in
             switch newPhase {
             case .active:
-                // Critical: Ensure App Icon Sync on First Launch / Active
-                // If the initial sync in ThemeManager.init() failed (because app wasn't active),
-                // this ensures we retry as soon as the app is visible.
-                Task { @MainActor in
-                    themeManager.updateAppIcon()
-                }
+                // App is now active
+                break
             case .background, .inactive:
                 // Mission Critical: Ensure Persistence Flush
                 // AudioManager observes 'didEnterBackground' to save exact progress.
