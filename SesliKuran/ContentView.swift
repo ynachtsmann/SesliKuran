@@ -108,7 +108,7 @@ struct ContentView: View {
                             AudioListView(isShowing: $showSlotSelection) { selectedTrack in
                                 audioManager.selectedTrack = selectedTrack
                                 // MANUAL SELECTION: Always start from 0:00 (resumePlayback: false)
-                                audioManager.loadAudio(track: selectedTrack, autoPlay: true, resumePlayback: false)
+                                audioManager.loadAudio(track: selectedTrack, autoPlay: true)
                                 withAnimation(.easeInOut(duration: 0.3)) {
                                     showSlotSelection = false
                                 }
