@@ -137,10 +137,10 @@ final class AudioManager: NSObject, ObservableObject, AVAudioPlayerDelegate {
         var success = false
 
         // Attempt 1: Preferred Settings (High Quality)
-        // .playback + .spokenAudio + .allowBluetoothA2DP
+        // .playback + .spokenAudio
         if !success {
             do {
-                try session.setCategory(.playback, mode: .spokenAudio, options: [.allowBluetoothA2DP])
+                try session.setCategory(.playback, mode: .spokenAudio, options: [])
                 try session.setActive(true)
                 success = true
                 print("Audio Session: Activated successfully (Preferred Configuration)")
