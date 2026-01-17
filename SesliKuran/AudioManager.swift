@@ -248,18 +248,25 @@ final class AudioManager: NSObject, ObservableObject {
         // 1. Time Observer (High Freq UI Update)
         let interval = CMTime(seconds: 0.1, preferredTimescale: 600)
         timeObserverToken = player.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak self] time in
-            self?.currentTime = time.seconds
+            Task { @MainActor in
+                self?.currentTime = time.seconds
+            }
         }
 
         // 2. Current Item Observer (Detect Gapless Track Change)
         itemObserver = player.observe(\.currentItem, options: [.new]) { [weak self] player, _ in
-            self?.handleTrackChange()
+            Task { @MainActor in
+                self?.handleTrackChange()
+            }
         }
 
         // 3. Status Observer (Ready to Play / Failed)
         statusObserver = player.observe(\.status, options: [.new]) { [weak self] player, _ in
              if player.status == .failed {
-                 self?.handleError(player.error)
+                 let error = player.error
+                 Task { @MainActor in
+                     self?.handleError(error)
+                 }
              }
         }
     }
