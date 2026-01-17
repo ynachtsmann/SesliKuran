@@ -23,25 +23,21 @@ class ReproduceStickyStateTests: XCTestCase {
         let surah1 = SurahData.allSurahs[0]
 
         // Load it once to simulate "Last played position"
-        audioManager.loadAudio(track: surah1, autoPlay: false, resumePlayback: true)
+        // We simulate a resume by passing an explicit start time (e.g. 10.0s)
+        audioManager.loadAudio(track: surah1, startTime: 10.0, autoPlay: false)
+        audioManager.currentTime = 10.0 // Manually set state to confirm transition
 
-        // Simulate playing to 10 seconds
-        audioManager.currentTime = 10.0
-        // We can't easily mock PersistenceManager in this integration-style test without dependency injection,
-        // but we can trust the logic flow we implemented:
-        // loadAudio check `resumePlayback`.
+        // When: User manually selects the track again (Default startTime is 0)
+        audioManager.loadAudio(track: surah1, autoPlay: false)
 
-        // When: User manually selects the track again (resumePlayback: false)
-        audioManager.loadAudio(track: surah1, autoPlay: false, resumePlayback: false)
-
-        // Wait for async restore
-        let expectation = XCTestExpectation(description: "Wait for position restore")
+        // Wait for potential async state updates (though loadAudio is synchronous in logic, state updates might propagate)
+        let expectation = XCTestExpectation(description: "Wait for state stabilization")
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             expectation.fulfill()
         }
         wait(for: [expectation], timeout: 1.0)
 
-        // Assert: It should be 0.
+        // Assert: It should be 0 (Start from beginning)
         XCTAssertEqual(audioManager.currentTime, 0, accuracy: 0.1, "Manual selection should reset time to 0")
     }
 
