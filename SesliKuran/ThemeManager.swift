@@ -54,6 +54,11 @@ class ThemeManager: ObservableObject {
 
         // Initial icon check (delayed slightly to ensure window is active)
         Task { @MainActor in
+            // Mission Critical: Wait for Window to be Active
+            // Launch race condition fix: 'setAlternateIconName' fails if called before the window is fully attached.
+            // 1 second delay ensures the Splash Screen is up and the system is ready.
+            try? await Task.sleep(nanoseconds: 1_000_000_000)
+
             // Check if icon needs update on launch (e.g. if system reset it or it's out of sync)
             let currentIcon = UIApplication.shared.alternateIconName
             if savedSettings.isDarkMode && currentIcon != "AppIcon-Dark" {
