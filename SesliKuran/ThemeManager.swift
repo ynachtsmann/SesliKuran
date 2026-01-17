@@ -39,7 +39,6 @@ class ThemeManager: ObservableObject {
             // Note: We don't check 'isLoading' here because we want manual toggles to save.
             Task { @MainActor in
                 await PersistenceManager.shared.updateTheme(isDarkMode: isDarkMode)
-                updateAppIcon(isDark: isDarkMode)
             }
         }
     }
@@ -51,35 +50,5 @@ class ThemeManager: ObservableObject {
         // Synchronously load the saved theme preference on startup
         let savedSettings = PersistenceManager.shared.loadSynchronously(systemDarkMode: systemIsDark)
         self._isDarkMode = Published(initialValue: savedSettings.isDarkMode)
-
-        // Initial icon check (delayed slightly to ensure window is active)
-        Task { @MainActor in
-            // Mission Critical: Wait for Window to be Active
-            // Launch race condition fix: 'setAlternateIconName' fails if called before the window is fully attached.
-            // 1 second delay ensures the Splash Screen is up and the system is ready.
-            try? await Task.sleep(nanoseconds: 1_000_000_000)
-
-            // Check if icon needs update on launch (e.g. if system reset it or it's out of sync)
-            let currentIcon = UIApplication.shared.alternateIconName
-            if savedSettings.isDarkMode && currentIcon != "AppIcon-Dark" {
-                updateAppIcon(isDark: true)
-            } else if !savedSettings.isDarkMode && currentIcon != nil {
-                updateAppIcon(isDark: false)
-            }
-        }
-    }
-
-    // MARK: - App Icon Management
-    private func updateAppIcon(isDark: Bool) {
-        let iconName = isDark ? "AppIcon-Dark" : nil
-
-        // Check if change is actually needed to avoid unnecessary alerts
-        if UIApplication.shared.alternateIconName != iconName {
-            UIApplication.shared.setAlternateIconName(iconName) { error in
-                if let error = error {
-                    print("Error setting alternate icon: \(error.localizedDescription)")
-                }
-            }
-        }
     }
 }
