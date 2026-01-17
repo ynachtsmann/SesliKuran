@@ -71,11 +71,11 @@ final class AudioManager: NSObject, ObservableObject {
             // Requirement: Default mode (Flat response, NO spokenAudio/High-Pass)
             try session.setCategory(.playback, mode: .default, options: [])
 
-            // Requirement: 48kHz Native Sample Rate (Avoid Resampling)
-            try session.setPreferredSampleRate(48000.0)
+            // Requirement: 44.1kHz Native Sample Rate (Avoid Resampling)
+            try session.setPreferredSampleRate(44100.0)
 
             try session.setActive(true)
-            print("Audio Session: Configured for Audiophile Playback (48kHz, .default)")
+            print("Audio Session: Configured for Audiophile Playback (44.1kHz, .default)")
         } catch {
             print("Audio Session Error: \(error)")
             // Fallback not necessary for strict audiophile app?
@@ -96,14 +96,14 @@ final class AudioManager: NSObject, ObservableObject {
         self.showError = false
 
         // 2. Build Queue [Selected...114]
-        // Requirement: Offline App, Bundle Only, format "%03d.m4a"
+        // Requirement: Offline App, Bundle Only, format "%03d.mp3"
         var items: [AVPlayerItem] = []
         let startId = track.id
         let endId = 114
 
         for id in startId...endId {
             let filename = String(format: "%03d", id)
-            if let url = Bundle.main.url(forResource: filename, withExtension: "m4a") {
+            if let url = Bundle.main.url(forResource: filename, withExtension: "mp3") {
                 let item = AVPlayerItem(url: url)
                 // Requirement: preferredForwardBufferDuration = 0 (Local file, zero latency)
                 item.preferredForwardBufferDuration = 0
@@ -288,8 +288,8 @@ final class AudioManager: NSObject, ObservableObject {
         // Extract Surah ID from URL
         if let asset = item.asset as? AVURLAsset {
             let url = asset.url
-            let filename = url.lastPathComponent // "001.m4a"
-            let idString = filename.replacingOccurrences(of: ".m4a", with: "")
+            let filename = url.lastPathComponent // "001.mp3"
+            let idString = filename.replacingOccurrences(of: ".mp3", with: "")
             if let id = Int(idString), let surah = SurahData.getSurah(id: id) {
                 // Update UI State
                 self.selectedTrack = surah
