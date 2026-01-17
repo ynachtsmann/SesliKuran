@@ -46,7 +46,8 @@ final class AudioManager: NSObject, ObservableObject {
 
     // MARK: - Asynchronous Preparation
     func prepare() async {
-        await setupSession()
+        // Silent Setup: Don't show alerts during splash screen
+        await setupSession(silent: true)
 
         // Restore Settings
         let lastID = await PersistenceManager.shared.getLastPlayedSurahId()
@@ -59,12 +60,12 @@ final class AudioManager: NSObject, ObservableObject {
         let lastTrack = SurahData.getSurah(id: lastID) ?? SurahData.fallbackSurah
 
         // Load Audio Silent (Prepare Queue)
-        // Explicitly pass the restored time
-        loadAudio(track: lastTrack, startTime: lastTime, autoPlay: false)
+        // Explicitly pass the restored time AND suppress errors
+        loadAudio(track: lastTrack, startTime: lastTime, autoPlay: false, silent: true)
     }
 
     // MARK: - Session Configuration (Audiophile Strict)
-    private func setupSession() async {
+    private func setupSession(silent: Bool = false) async {
         let session = AVAudioSession.sharedInstance()
         do {
             // Requirement: Playback category (No mute switch interference)
@@ -80,13 +81,15 @@ final class AudioManager: NSObject, ObservableObject {
             print("Audio Session Error: \(error)")
             // Fallback not necessary for strict audiophile app?
             // We proceed, but quality might be compromised by OS.
-            self.errorMessage = "Audio-Hardware konnte nicht konfiguriert werden."
-            self.showError = true
+            if !silent {
+                self.errorMessage = "Audio-Hardware konnte nicht konfiguriert werden."
+                self.showError = true
+            }
         }
     }
     
     // MARK: - Core Playback Logic (Queue Construction)
-    func loadAudio(track: Surah, startTime: TimeInterval = 0, autoPlay: Bool = true) {
+    func loadAudio(track: Surah, startTime: TimeInterval = 0, autoPlay: Bool = true, silent: Bool = false) {
         // 1. Reset current player
         stopPlayback()
 
@@ -116,8 +119,12 @@ final class AudioManager: NSObject, ObservableObject {
 
         guard !items.isEmpty else {
             self.isLoading = false
-            self.errorMessage = "Audiodatei nicht gefunden (Bundle Integrity Error)."
-            self.showError = true
+            if !silent {
+                self.errorMessage = "Audiodatei nicht gefunden (Bundle Integrity Error)."
+                self.showError = true
+            } else {
+                print("Silent Load Failed: Bundle Integrity Error for track \(track.id)")
+            }
             return
         }
 
