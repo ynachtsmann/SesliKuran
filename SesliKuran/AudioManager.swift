@@ -202,6 +202,15 @@ final class AudioManager: NSObject, ObservableObject {
     // MARK: - Navigation
     func nextTrack() {
         guard let player = player else { return }
+
+        // Wraparound Logic: 114 -> 1
+        if selectedTrack?.id == 114 {
+            if let firstSurah = SurahData.getSurah(id: 1) {
+                loadAudio(track: firstSurah, autoPlay: true)
+            }
+            return
+        }
+
         // AVQueuePlayer: Advance to next item
         player.advanceToNextItem()
         // The itemObserver will detect the change and update 'selectedTrack'
@@ -217,6 +226,14 @@ final class AudioManager: NSObject, ObservableObject {
         if currentTime > 3 {
             seek(to: 0)
         } else {
+            // Wraparound Logic: 1 -> 114
+            if current.id == 1 {
+                if let lastSurah = SurahData.getSurah(id: 114) {
+                    loadAudio(track: lastSurah, autoPlay: true)
+                }
+                return
+            }
+
             let prevId = current.id - 1
             if let prevSurah = SurahData.getSurah(id: prevId) {
                 // Rebuild Queue from Prev
@@ -293,6 +310,14 @@ final class AudioManager: NSObject, ObservableObject {
         guard let item = player?.currentItem else {
             // Queue finished?
             if isPlaying { // If we were playing and now nil, queue ended.
+                // Wraparound Logic: End of 114 -> Start of 1
+                if selectedTrack?.id == 114 {
+                    if let firstSurah = SurahData.getSurah(id: 1) {
+                        loadAudio(track: firstSurah, autoPlay: true)
+                        return
+                    }
+                }
+
                 isPlaying = false
                 stopSavePositionTask()
             }
