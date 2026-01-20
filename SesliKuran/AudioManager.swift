@@ -52,7 +52,12 @@ final class AudioManager: NSObject, ObservableObject {
         // Restore Settings
         let lastID = await PersistenceManager.shared.getLastPlayedSurahId()
         let speed = await PersistenceManager.shared.getPlaybackSpeed()
-        let lastTime = await PersistenceManager.shared.getLastPosition(for: lastID)
+        var lastTime = await PersistenceManager.shared.getLastPosition(for: lastID)
+
+        // Smart Resume: If less than 5 seconds, reset to 0 to avoid annoyance
+        if lastTime < 5 {
+            lastTime = 0
+        }
 
         self.playbackRate = speed
 

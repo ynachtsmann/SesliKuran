@@ -19,8 +19,8 @@ struct TimeSliderView: View {
             NeumorphicSlider(
                 value: $sliderValue,
                 inRange: 0...max(audioManager.duration, 0.01), // Prevent 0 range
+                isDragging: $isDragging,
                 onEditingChanged: { editing in
-                    isDragging = editing
                     // seek only on release
                     if !editing {
                         audioManager.seek(to: sliderValue)
