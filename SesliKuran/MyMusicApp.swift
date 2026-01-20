@@ -53,9 +53,8 @@ struct MyMusicApp: App {
                 break
             case .background, .inactive:
                 // Mission Critical: Ensure Persistence Flush
-                // AudioManager observes 'didEnterBackground' to save exact progress.
-                // Here we simply log the lifecycle transition for debugging/assurance.
-                // The heavy lifting is done in AudioManager to capture the exact second.
+                // We explicitly trigger a save to guarantee state is captured even for short sessions.
+                audioManager.saveCurrentPosition()
                 print("App Lifecycle: Transition to \(newPhase) - Data integrity secured.")
             @unknown default:
                 break

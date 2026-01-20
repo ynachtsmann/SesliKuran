@@ -23,9 +23,13 @@ struct TimeSliderView: View {
                 onEditingChanged: { editing in
                     // seek only on release
                     if !editing {
-                        // Force drag state end to prevent stuck UI at 00:00
-                        isDragging = false
-                        audioManager.seek(to: sliderValue)
+                        // Force drag state end to prevent stuck UI at 00:00.
+                        // We dispatch to next runloop to ensure 'isDragging' binding is cleanly updated
+                        // before we trigger seek, allowing 'onChange' to resume updates.
+                        DispatchQueue.main.async {
+                            isDragging = false
+                            audioManager.seek(to: sliderValue)
+                        }
                     }
                 },
                 isDarkMode: themeManager.isDarkMode,
@@ -49,8 +53,8 @@ struct TimeSliderView: View {
                     .monospacedDigit()
             }
             .font(.system(size: 12 * scale, weight: .medium)) // Improved font size
-            // Colors adapted to theme (High Contrast)
-            .foregroundStyle(themeManager.isDarkMode ? .white : .black)
+            // Colors match the Accent Color (Next Button)
+            .foregroundStyle(ThemeColors.primaryColor(isDarkMode: themeManager.isDarkMode))
         }
     }
 
