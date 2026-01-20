@@ -13,8 +13,8 @@ struct ControlSectionView: View {
     // MARK: - Body
     var body: some View {
         // Dynamic Spacing based on available width (pane width in landscape)
-        // We use a conservative 10% of the PANE width to prevent buttons flying apart
-        let dynamicSpacing = availableWidth * 0.1
+        // We use a conservative 5% of the PANE width to prevent buttons flying apart (Updated for 5 items)
+        let dynamicSpacing = availableWidth * 0.05
 
         return HStack(spacing: dynamicSpacing) {
             Button(action: {
@@ -26,6 +26,15 @@ struct ControlSectionView: View {
             }
             .accessibilityLabel("Vorherige Surah")
 
+            Button(action: {
+                audioManager.skipBackward()
+            }) {
+                Image(systemName: "gobackward.15")
+                    .font(.system(size: 22 * scale))
+                    .foregroundStyle(ThemeColors.buttonForeground(isDarkMode: themeManager.isDarkMode))
+            }
+            .accessibilityLabel("15 Sekunden zurück")
+
             GlassyControlButton(
                 iconName: audioManager.isPlaying ? "pause.fill" : "play.fill",
                 action: { audioManager.togglePlayPause() },
@@ -33,6 +42,15 @@ struct ControlSectionView: View {
                 isDarkMode: themeManager.isDarkMode
             )
             .accessibilityLabel(audioManager.isPlaying ? "Pause" : "Wiedergabe")
+
+            Button(action: {
+                audioManager.skipForward()
+            }) {
+                Image(systemName: "goforward.15")
+                    .font(.system(size: 22 * scale))
+                    .foregroundStyle(ThemeColors.buttonForeground(isDarkMode: themeManager.isDarkMode))
+            }
+            .accessibilityLabel("15 Sekunden vor")
 
             Button(action: {
                 audioManager.nextTrack()
