@@ -250,7 +250,7 @@ final class AudioManager: NSObject, ObservableObject {
     }
     
     func skipForward() {
-        seek(to: currentTime + 30)
+        seek(to: currentTime + 15)
     }
 
     func skipBackward() {
