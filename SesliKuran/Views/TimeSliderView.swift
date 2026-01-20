@@ -32,7 +32,7 @@ struct TimeSliderView: View {
             .onAppear {
                 sliderValue = audioManager.currentTime
             }
-            .onChange(of: audioManager.currentTime) { newValue in
+            .onChange(of: audioManager.currentTime) { _, newValue in
                 if !isDragging {
                     sliderValue = newValue
                 }
