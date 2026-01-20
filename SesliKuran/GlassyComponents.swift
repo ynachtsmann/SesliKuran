@@ -111,11 +111,10 @@ struct GlassyControlButton: View {
 struct NeumorphicSlider: View {
     @Binding var value: Double
     var inRange: ClosedRange<Double>
+    @Binding var isDragging: Bool // Lifted state to binding
     var onEditingChanged: (Bool) -> Void = { _ in }
     var isDarkMode: Bool // Added theme parameter
     var timeFormatter: ((Double) -> String)? = nil // Optional formatter for floating label
-
-    @State private var isDraggingLocal: Bool = false
 
     // Computed property to centralize progress calculation (DRY Principle)
     private var progress: CGFloat {
@@ -161,7 +160,7 @@ struct NeumorphicSlider: View {
                         )
 
                     // Floating Time Label (Visible on Drag)
-                    if isDraggingLocal, let formatter = timeFormatter {
+                    if isDragging, let formatter = timeFormatter {
                         Text(formatter(value))
                             .font(.system(size: 12, weight: .bold, design: .monospaced))
                             .foregroundStyle(ThemeColors.buttonForeground(isDarkMode: isDarkMode))
@@ -181,7 +180,7 @@ struct NeumorphicSlider: View {
             // 3. Interactive Slider (Top Layer)
             // This is the actual slider that captures touches.
             Slider(value: $value, in: inRange, onEditingChanged: { editing in
-                isDraggingLocal = editing
+                isDragging = editing
                 onEditingChanged(editing)
             })
             .accentColor(.clear) // Hide default thumb color
