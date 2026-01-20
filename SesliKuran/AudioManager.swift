@@ -55,11 +55,6 @@ final class AudioManager: NSObject, ObservableObject {
         let speed = await PersistenceManager.shared.getPlaybackSpeed()
         var lastTime = await PersistenceManager.shared.getLastPosition(for: lastID)
 
-        // Smart Resume: If less than 5 seconds, reset to 0 to avoid annoyance
-        if lastTime < 5 {
-            lastTime = 0
-        }
-
         self.playbackRate = speed
 
         // Resolve Track
@@ -120,6 +115,10 @@ final class AudioManager: NSObject, ObservableObject {
                 let item = AVPlayerItem(url: url)
                 item.preferredForwardBufferDuration = 0
                 initialItems.append(item)
+            } else {
+                // Sequential Integrity: Stop building queue if a file is missing.
+                // This ensures we don't skip from 002 to 114 if 003 is missing.
+                break
             }
         }
 
@@ -180,6 +179,9 @@ final class AudioManager: NSObject, ObservableObject {
                     let item = AVPlayerItem(url: url)
                     item.preferredForwardBufferDuration = 0
                     backgroundItems.append(item)
+                } else {
+                    // Sequential Integrity: Stop building queue if a file is missing.
+                    break
                 }
             }
 
@@ -251,6 +253,19 @@ final class AudioManager: NSObject, ObservableObject {
                 loadAudio(track: firstSurah, autoPlay: true)
             }
             return
+        }
+
+        // Sequential Check: Verify next track exists
+        if let currentId = selectedTrack?.id {
+            let nextId = currentId + 1
+            let filename = String(format: "%03d", nextId)
+
+            // If the next file is missing, do not advance. Show error instead.
+            if Bundle.main.url(forResource: filename, withExtension: "mp3") == nil {
+                errorMessage = "Audiodatei \(nextId) fehlt."
+                showError = true
+                return
+            }
         }
 
         // AVQueuePlayer: Advance to next item
@@ -353,10 +368,22 @@ final class AudioManager: NSObject, ObservableObject {
             // Queue finished?
             if isPlaying { // If we were playing and now nil, queue ended.
                 // Wraparound Logic: End of 114 -> Start of 1
-                if selectedTrack?.id == 114 {
-                    if let firstSurah = SurahData.getSurah(id: 1) {
-                        loadAudio(track: firstSurah, autoPlay: true)
-                        return
+                if let currentId = selectedTrack?.id {
+                    if currentId == 114 {
+                        if let firstSurah = SurahData.getSurah(id: 1) {
+                            loadAudio(track: firstSurah, autoPlay: true)
+                            return
+                        }
+                    } else {
+                        // Sequential Check: If queue finished prematurely (not 114),
+                        // verify if the next file is missing.
+                        let nextId = currentId + 1
+                        let filename = String(format: "%03d", nextId)
+                        if Bundle.main.url(forResource: filename, withExtension: "mp3") == nil {
+                            // Missing file caused queue end
+                            errorMessage = "Audiodatei \(nextId) fehlt."
+                            showError = true
+                        }
                     }
                 }
 
