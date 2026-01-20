@@ -9,17 +9,34 @@ struct TimeSliderView: View {
 
     let scale: CGFloat
 
+    // MARK: - Local State for Interaction
+    @State private var sliderValue: Double = 0
+    @State private var isDragging: Bool = false
+
     // MARK: - Body
     var body: some View {
         VStack(spacing: 4 * scale) {
             NeumorphicSlider(
-                value: $audioManager.currentTime,
+                value: $sliderValue,
                 inRange: 0...max(audioManager.duration, 0.01), // Prevent 0 range
-                onEditingChanged: { _ in
-                    audioManager.seek(to: audioManager.currentTime)
+                onEditingChanged: { editing in
+                    isDragging = editing
+                    // seek only on release
+                    if !editing {
+                        audioManager.seek(to: sliderValue)
+                    }
                 },
-                isDarkMode: themeManager.isDarkMode
+                isDarkMode: themeManager.isDarkMode,
+                timeFormatter: timeString
             )
+            .onAppear {
+                sliderValue = audioManager.currentTime
+            }
+            .onChange(of: audioManager.currentTime) { newValue in
+                if !isDragging {
+                    sliderValue = newValue
+                }
+            }
 
             // Time Labels below the ends
             HStack {
