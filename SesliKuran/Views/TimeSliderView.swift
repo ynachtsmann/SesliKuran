@@ -19,10 +19,12 @@ struct TimeSliderView: View {
             NeumorphicSlider(
                 value: $sliderValue,
                 inRange: 0...max(audioManager.duration, 0.01), // Prevent 0 range
+                isDragging: $isDragging,
                 onEditingChanged: { editing in
-                    isDragging = editing
                     // seek only on release
                     if !editing {
+                        // Force drag state end to prevent stuck UI at 00:00
+                        isDragging = false
                         audioManager.seek(to: sliderValue)
                     }
                 },
@@ -32,7 +34,7 @@ struct TimeSliderView: View {
             .onAppear {
                 sliderValue = audioManager.currentTime
             }
-            .onChange(of: audioManager.currentTime) { newValue in
+            .onChange(of: audioManager.currentTime) { _, newValue in
                 if !isDragging {
                     sliderValue = newValue
                 }
@@ -47,7 +49,8 @@ struct TimeSliderView: View {
                     .monospacedDigit()
             }
             .font(.system(size: 12 * scale, weight: .medium)) // Improved font size
-            .foregroundStyle(themeManager.isDarkMode ? .white.opacity(0.6) : .gray)
+            // Colors adapted to theme (High Contrast)
+            .foregroundStyle(themeManager.isDarkMode ? .white : .black)
         }
     }
 
