@@ -33,6 +33,7 @@ final class AudioManager: NSObject, ObservableObject {
     // Concurrency
     private var sleepTimerTask: Task<Void, Never>?
     private var savePositionTask: Task<Void, Never>?
+    private var queueLoadingTask: Task<Void, Never>? // Added for Progressive Loading
 
     // Background Launch Protection
     private var hasEnteredForeground: Bool = false
@@ -95,7 +96,7 @@ final class AudioManager: NSObject, ObservableObject {
     
     // MARK: - Core Playback Logic (Queue Construction)
     func loadAudio(track: Surah, startTime: TimeInterval = 0, autoPlay: Bool = true, silent: Bool = false) {
-        // 1. Reset current player
+        // 1. Reset current player and cancel background loading
         stopPlayback()
 
         self.selectedTrack = track
@@ -103,26 +104,27 @@ final class AudioManager: NSObject, ObservableObject {
         self.errorMessage = nil
         self.showError = false
 
-        // 2. Build Queue [Selected...114]
-        // Requirement: Offline App, Bundle Only, format "%03d.mp3"
-        var items: [AVPlayerItem] = []
+        // 2. Progressive Queue Loading (Audiophile Optimization)
+        // Instead of loading all 114 items at once (blocking Main Thread),
+        // we load the current track + next 2 immediately to ensure instant playback.
         let startId = track.id
+        let initialLoadCount = 3
         let endId = 114
+        let initialEndId = min(startId + initialLoadCount - 1, endId)
 
-        for id in startId...endId {
+        var initialItems: [AVPlayerItem] = []
+
+        for id in startId...initialEndId {
             let filename = String(format: "%03d", id)
             if let url = Bundle.main.url(forResource: filename, withExtension: "mp3") {
                 let item = AVPlayerItem(url: url)
-                // Requirement: preferredForwardBufferDuration = 0 (Local file, zero latency)
                 item.preferredForwardBufferDuration = 0
-                items.append(item)
-            } else {
-                // If a file is missing in the middle, the queue simply skips it.
-                // We assume bundle integrity is generally good.
+                initialItems.append(item)
             }
         }
 
-        guard !items.isEmpty else {
+        // Integrity Check
+        guard !initialItems.isEmpty else {
             self.isLoading = false
             if !silent {
                 self.errorMessage = "Audiodatei nicht gefunden (Bundle Integrity Error)."
@@ -133,15 +135,15 @@ final class AudioManager: NSObject, ObservableObject {
             return
         }
 
-        // 3. Initialize Queue Player
-        self.player = AVQueuePlayer(items: items)
-        self.player?.actionAtItemEnd = .advance // Native Gapless
-        self.player?.volume = 1.0 // Requirement: Signal Purity
+        // 3. Initialize Queue Player with Initial Items
+        self.player = AVQueuePlayer(items: initialItems)
+        self.player?.actionAtItemEnd = .advance
+        self.player?.volume = 1.0
 
         // 4. Setup Observers
         setupObservers()
 
-        // 5. Restore Position or Play
+        // 5. Restore Position
         if startTime > 0 {
              let cmTime = CMTime(seconds: startTime, preferredTimescale: 600)
              self.player?.seek(to: cmTime)
@@ -149,18 +151,51 @@ final class AudioManager: NSObject, ObservableObject {
 
         self.isLoading = false
 
+        // 6. Start Background Loading for Remaining Tracks
+        if initialEndId < endId {
+            startQueueLoadingTask(from: initialEndId + 1, to: endId)
+        }
+
         if autoPlay {
             play()
         } else {
             updateNowPlayingInfo()
-            // Update UI state for duration/time
              if let item = self.player?.currentItem {
-                 // Async duration load
                  Task {
                      let duration = try? await item.asset.load(.duration).seconds
                      self.duration = duration ?? 0
                  }
              }
+        }
+    }
+
+    private func startQueueLoadingTask(from startId: Int, to endId: Int) {
+        queueLoadingTask = Task.detached(priority: .utility) { [weak self] in
+            var backgroundItems: [AVPlayerItem] = []
+
+            for id in startId...endId {
+                if Task.isCancelled { return }
+                let filename = String(format: "%03d", id)
+                if let url = Bundle.main.url(forResource: filename, withExtension: "mp3") {
+                    let item = AVPlayerItem(url: url)
+                    item.preferredForwardBufferDuration = 0
+                    backgroundItems.append(item)
+                }
+            }
+
+            // Append to Player on Main Actor
+            await MainActor.run {
+                guard let self = self, let player = self.player, !Task.isCancelled else { return }
+
+                // Only append if we are still playing the same session
+                // The 'queueLoadingTask' is cancelled in 'stopPlayback', so this is safe.
+                for item in backgroundItems {
+                    if player.canInsert(item, after: nil) {
+                        player.insert(item, after: nil)
+                    }
+                }
+                print("Background Queue Loading Complete: \(startId)-\(endId)")
+            }
         }
     }
 
@@ -196,6 +231,8 @@ final class AudioManager: NSObject, ObservableObject {
     }
 
     private func stopPlayback() {
+        queueLoadingTask?.cancel() // Stop any background loading
+        queueLoadingTask = nil
         player?.pause()
         player?.removeAllItems()
         player = nil
@@ -361,7 +398,9 @@ final class AudioManager: NSObject, ObservableObject {
         savePositionTask?.cancel()
         savePositionTask = Task {
             while !Task.isCancelled {
-                try? await Task.sleep(nanoseconds: 15_000_000_000) // 15s
+                // Wait first to avoid double-save on start (since we just loaded)
+                // Reduced from 15s to 10s for more frequent crash recovery
+                try? await Task.sleep(nanoseconds: 10_000_000_000) // 10s
                 self.saveCurrentPosition()
             }
         }
