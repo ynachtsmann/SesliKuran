@@ -23,6 +23,8 @@ struct TimeSliderView: View {
                 onEditingChanged: { editing in
                     // seek only on release
                     if !editing {
+                        // Force drag state end to prevent stuck UI at 00:00
+                        isDragging = false
                         audioManager.seek(to: sliderValue)
                     }
                 },
@@ -47,7 +49,8 @@ struct TimeSliderView: View {
                     .monospacedDigit()
             }
             .font(.system(size: 12 * scale, weight: .medium)) // Improved font size
-            .foregroundStyle(themeManager.isDarkMode ? .white.opacity(0.6) : .gray)
+            // Colors adapted to theme (High Contrast)
+            .foregroundStyle(themeManager.isDarkMode ? .white : .black)
         }
     }
 
