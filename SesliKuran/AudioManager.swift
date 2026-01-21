@@ -102,6 +102,11 @@ final class AudioManager: NSObject, ObservableObject {
         self.errorMessage = nil
         self.showError = false
 
+        // Explicitly reset time and duration to 0 BEFORE checks.
+        // This ensures UI cleans up immediately (fixes "hanging timeline").
+        self.currentTime = 0
+        self.duration = 0
+
         // 2. Progressive Queue Loading (Audiophile Optimization)
         // Instead of loading all 114 items at once (blocking Main Thread),
         // we load the current track + next 2 immediately to ensure instant playback.
@@ -128,10 +133,6 @@ final class AudioManager: NSObject, ObservableObject {
         // Integrity Check
         guard !initialItems.isEmpty else {
             self.isLoading = false
-
-            // Cleanup UI State even if load fails
-            self.currentTime = 0
-            self.duration = 0
 
             if !silent {
                 // Repeated Failure Logic
@@ -292,23 +293,20 @@ final class AudioManager: NSObject, ObservableObject {
         let filename = String(format: "%03d", nextId)
 
         // Check if next file exists
+        // LOGIC UPDATE: We do NOT stop if file is missing.
+        // We attempt to load it, which will trigger loadAudio -> Error.
+        // This updates 'selectedTrack' to the new ID, so the user can press Next AGAIN
+        // to skip over the hole.
         if Bundle.main.url(forResource: filename, withExtension: "mp3") == nil {
-            errorMessage = "Audiodatei \(nextId) fehlt."
-            showError = true
-            // We do NOT stop here. The user might want to navigate PAST this hole.
-            // But for now, we follow the requirement to show error.
-            // If the user presses Next AGAIN, they are still on 'currentId', so it will error again.
-            // To allow skipping holes, we should probably load the track anyway and let loadAudio fail?
-            // User requirement: "Show error, wait for manual navigation".
-            // So we show error. But we must ensure we don't crash.
-            return
+            print("Next file \(nextId) missing. Proceeding to loadAudio to trigger UI error state.")
         }
 
         // If player is valid and we are just moving to next item in queue
-        if let player = player, player.items().count > 1 {
+        // AND the next file actually exists (to prevent player crash)
+        if let player = player, player.items().count > 1, Bundle.main.url(forResource: filename, withExtension: "mp3") != nil {
             player.advanceToNextItem()
         } else {
-            // Fallback: Force Load (e.g. if player was nil or queue empty)
+            // Fallback: Force Load (e.g. if player was nil, queue empty, OR file missing)
             if let nextSurah = SurahData.getSurah(id: nextId) {
                 loadAudio(track: nextSurah, autoPlay: true)
             }
