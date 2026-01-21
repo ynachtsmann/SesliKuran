@@ -46,10 +46,12 @@ struct TimeSliderView: View {
 
             // Time Labels below the ends
             HStack {
-                Text(timeString(time: audioManager.currentTime))
+                // Live Scrubbing: Show slider value while dragging, otherwise actual player time
+                Text(timeString(time: isDragging ? sliderValue : audioManager.currentTime))
                     .monospacedDigit()
                 Spacer()
-                Text(timeString(time: audioManager.duration))
+                // Show "--:--" if duration is 0 (loading/failed), otherwise formatted duration
+                Text(audioManager.duration > 0 ? timeString(time: audioManager.duration) : "--:--")
                     .monospacedDigit()
             }
             .font(.system(size: 12 * scale, weight: .medium)) // Improved font size
