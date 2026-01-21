@@ -119,7 +119,14 @@ struct NeumorphicSlider: View {
     // Computed property to centralize progress calculation (DRY Principle)
     private var progress: CGFloat {
         let rangeDistance = inRange.upperBound - inRange.lowerBound
-        return rangeDistance > 0 ? CGFloat((value - inRange.lowerBound) / rangeDistance) : 0
+        // Guard against division by zero or invalid ranges
+        guard rangeDistance > 0 else { return 0 }
+
+        let calculatedProgress = CGFloat((value - inRange.lowerBound) / rangeDistance)
+
+        // Strict Clamping to prevent layout glitches ("going through the app")
+        // if value is momentarily out of sync with range.
+        return min(max(calculatedProgress, 0), 1)
     }
 
     var body: some View {
