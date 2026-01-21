@@ -251,6 +251,10 @@ final class AudioManager: NSObject, ObservableObject {
     }
 
     private func stopPlayback() {
+        // Critical: Remove observers FIRST to prevent recursive triggering
+        // if removeAllItems triggers an item change observation.
+        removeObservers()
+
         queueLoadingTask?.cancel() // Stop any background loading
         queueLoadingTask = nil
         player?.pause()
@@ -261,7 +265,6 @@ final class AudioManager: NSObject, ObservableObject {
         // Safety Cleanups: ensure UI is not blocked
         isLoading = false
 
-        removeObservers()
         stopSavePositionTask()
     }
 
@@ -315,15 +318,26 @@ final class AudioManager: NSObject, ObservableObject {
     func previousTrack() {
         guard let current = selectedTrack else { return }
         
-        // Logic:
-        // If Player exists AND Playtime > 3s -> Restart current
-        // If Player is nil OR Playtime <= 3s -> Previous Track
+        // LOGIC REFINED:
+        // We want to "Restart Current" if we are significantly into the track (> 3s),
+        // EVEN IF the player is nil (e.g. queue ended because next file missing).
+        //
+        // Case 1: Player active, time > 3s -> Restart (Seek)
+        // Case 2: Player NIL (stopped), time > 3s -> Restart (Reload)
+        // Case 3: Time <= 3s -> Go to Previous Track
 
-        let shouldRestart = (player != nil) && (currentTime > 3)
+        let isTimeSubstantial = currentTime > 3
 
-        if shouldRestart {
-            seek(to: 0)
+        if isTimeSubstantial {
+            if player != nil {
+                seek(to: 0)
+            } else {
+                // Player is dead (e.g. ended), but we want to hear it again.
+                loadAudio(track: current, autoPlay: true)
+            }
         } else {
+            // Go to Previous Track
+
             // Wraparound Logic: 1 -> 114
             if current.id == 1 {
                 if let lastSurah = SurahData.getSurah(id: 114) {
