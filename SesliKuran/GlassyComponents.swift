@@ -172,11 +172,7 @@ struct NeumorphicSlider: View {
                             .font(.system(size: 12, weight: .bold, design: .monospaced))
                             .foregroundStyle(ThemeColors.buttonForeground(isDarkMode: isDarkMode))
                             .padding(6)
-                            .background(
-                                Capsule()
-                                    .fill(isDarkMode ? Color.black.opacity(0.8) : Color.white.opacity(0.8))
-                                    .shadow(radius: 2)
-                            )
+                            // Background removed per user request
                             // Offset above the knob
                             .position(
                                 x: geometry.size.width * progress,
