@@ -166,6 +166,24 @@ struct NeumorphicSlider: View {
                             y: geometry.size.height / 2
                         )
 
+                    // Floating Time Label (Visible ONLY on Drag)
+                    if isDragging, let formatter = timeFormatter {
+                        Text(formatter(value))
+                            .font(.system(size: 12, weight: .bold, design: .monospaced))
+                            .foregroundStyle(ThemeColors.buttonForeground(isDarkMode: isDarkMode))
+                            .padding(6)
+                            .background(
+                                Capsule()
+                                    .fill(isDarkMode ? Color.black.opacity(0.8) : Color.white.opacity(0.8))
+                                    .shadow(radius: 2)
+                            )
+                            // Offset above the knob
+                            .position(
+                                x: geometry.size.width * progress,
+                                y: (geometry.size.height / 2) - 30
+                            )
+                            .transition(.opacity.animation(.easeInOut(duration: 0.2)))
+                    }
                 }
                 .allowsHitTesting(false) // Pass touches through visual elements
             }
