@@ -18,6 +18,9 @@ final class AudioManager: NSObject, ObservableObject {
     @Published var showError: Bool = false
     @Published var isLoading: Bool = false
 
+    // Scrubbing State (Source of Truth)
+    @Published var isScrubbing: Bool = false
+
     // Sleep Timer State
     @Published var sleepTimerTimeRemaining: TimeInterval = 0
     @Published var isSleepTimerActive: Bool = false
@@ -363,6 +366,49 @@ final class AudioManager: NSObject, ObservableObject {
         player.seek(to: cmTime)
         updateNowPlayingInfo()
     }
+
+    // MARK: - Scrubbing & Robust Seek (Pause-Seek-Play)
+    func startScrubbing() {
+        isScrubbing = true
+    }
+
+    func endScrubbing(at time: TimeInterval) {
+        // Optimistic UI: Set time immediately so UI snaps to target.
+        self.currentTime = time
+
+        guard let player = player else {
+            // If player is nil, just reset state (safety)
+            self.isScrubbing = false
+            return
+        }
+
+        let wasPlaying = self.isPlaying
+
+        // Protocol: Pause -> Seek -> (Play)
+        player.pause()
+
+        let cmTime = CMTime(seconds: time, preferredTimescale: 600)
+
+        player.seek(to: cmTime, toleranceBefore: .zero, toleranceAfter: .zero) { [weak self] finished in
+            Task { @MainActor in
+                // Robust State Reset: MUST happen even if seek was cancelled
+                self?.isScrubbing = false
+
+                if finished && wasPlaying {
+                    self?.play()
+                } else if !finished {
+                    // Even if seek didn't finish (e.g. rapid seeks), we should
+                    // respect the original intent if possible, or leave it paused.
+                    // If wasPlaying was true, we likely want to resume to avoid permanent pause.
+                    if wasPlaying {
+                        self?.play()
+                    }
+                }
+
+                self?.updateNowPlayingInfo()
+            }
+        }
+    }
     
     func skipForward() {
         seek(to: currentTime + 15)
@@ -388,7 +434,12 @@ final class AudioManager: NSObject, ObservableObject {
         let interval = CMTime(seconds: 0.1, preferredTimescale: 600)
         timeObserverToken = player.addPeriodicTimeObserver(forInterval: interval, queue: .main) { [weak self] time in
             Task { @MainActor in
-                self?.currentTime = time.seconds
+                guard let self = self else { return }
+                // Critical: Do NOT update currentTime while scrubbing.
+                // This prevents the slider from fighting with the player updates.
+                if !self.isScrubbing {
+                    self.currentTime = time.seconds
+                }
             }
         }
 

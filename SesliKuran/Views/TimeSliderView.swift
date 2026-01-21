@@ -21,15 +21,12 @@ struct TimeSliderView: View {
                 inRange: 0...max(audioManager.duration, 0.01), // Prevent 0 range
                 isDragging: $isDragging,
                 onEditingChanged: { editing in
-                    // seek only on release
-                    if !editing {
-                        // Force drag state end to prevent stuck UI at 00:00.
-                        // We dispatch to next runloop to ensure 'isDragging' binding is cleanly updated
-                        // before we trigger seek, allowing 'onChange' to resume updates.
-                        DispatchQueue.main.async {
-                            isDragging = false
-                            audioManager.seek(to: sliderValue)
-                        }
+                    if editing {
+                        // Start Scrubbing (Locks time observer updates)
+                        audioManager.startScrubbing()
+                    } else {
+                        // End Scrubbing (Triggers Pause-Seek-Play protocol)
+                        audioManager.endScrubbing(at: sliderValue)
                     }
                 },
                 isDarkMode: themeManager.isDarkMode,
@@ -39,7 +36,10 @@ struct TimeSliderView: View {
                 sliderValue = audioManager.currentTime
             }
             .onChange(of: audioManager.currentTime) { _, newValue in
-                if !isDragging {
+                // Double Guard:
+                // 1. Local drag state (immediate feedback)
+                // 2. Manager scrubbing state (async seek protection)
+                if !isDragging && !audioManager.isScrubbing {
                     sliderValue = newValue
                 }
             }
