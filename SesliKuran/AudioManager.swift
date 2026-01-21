@@ -186,12 +186,13 @@ final class AudioManager: NSObject, ObservableObject {
             }
 
             // Append to Player on Main Actor
-            await MainActor.run {
+            let itemsToAppend = backgroundItems
+            await MainActor.run { [weak self] in
                 guard let self = self, let player = self.player, !Task.isCancelled else { return }
 
                 // Only append if we are still playing the same session
                 // The 'queueLoadingTask' is cancelled in 'stopPlayback', so this is safe.
-                for item in backgroundItems {
+                for item in itemsToAppend {
                     if player.canInsert(item, after: nil) {
                         player.insert(item, after: nil)
                     }
