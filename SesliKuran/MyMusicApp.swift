@@ -55,6 +55,10 @@ struct MyMusicApp: App {
                 // Mission Critical: Ensure Persistence Flush
                 // We explicitly trigger a save to guarantee state is captured even for short sessions.
                 audioManager.saveCurrentPosition()
+
+                // Safety: Reset scrubbing state to prevent UI freeze on return
+                audioManager.cancelScrubbing()
+
                 print("App Lifecycle: Transition to \(newPhase) - Data integrity secured.")
             @unknown default:
                 break
