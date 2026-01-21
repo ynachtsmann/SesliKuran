@@ -257,6 +257,10 @@ final class AudioManager: NSObject, ObservableObject {
         player?.removeAllItems()
         player = nil
         isPlaying = false
+
+        // Safety Cleanups: ensure UI is not blocked
+        isLoading = false
+
         removeObservers()
         stopSavePositionTask()
     }
