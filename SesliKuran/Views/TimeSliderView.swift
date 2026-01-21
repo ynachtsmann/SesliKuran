@@ -60,8 +60,15 @@ struct TimeSliderView: View {
 
     // MARK: - Helper Methods
     private func timeString(time: TimeInterval) -> String {
-        let minutes = Int(time) / 60
-        let seconds = Int(time) % 60
+        // Robust handling for NaN or Infinite values
+        guard time.isFinite, !time.isNaN else {
+            return "00:00"
+        }
+        // Prevent negative time display
+        let validTime = max(time, 0)
+
+        let minutes = Int(validTime) / 60
+        let seconds = Int(validTime) % 60
         return String(format: "%02d:%02d", minutes, seconds)
     }
 }
