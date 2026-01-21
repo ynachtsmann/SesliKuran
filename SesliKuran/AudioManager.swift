@@ -173,16 +173,21 @@ final class AudioManager: NSObject, ObservableObject {
             startQueueLoadingTask(from: initialEndId + 1, to: endId)
         }
 
+        // Critical: Explicitly load duration for the current item.
+        // The 'itemObserver' might miss the initial item since we just created the player.
+        // This ensures the duration is set for the first track (Surah 1/114) even if autoPlay is true.
+        if let item = self.player?.currentItem {
+            Task {
+                let duration = try? await item.asset.load(.duration).seconds
+                self.duration = duration ?? 0
+                self.updateNowPlayingInfo()
+            }
+        }
+
         if autoPlay {
             play()
         } else {
             updateNowPlayingInfo()
-             if let item = self.player?.currentItem {
-                 Task {
-                     let duration = try? await item.asset.load(.duration).seconds
-                     self.duration = duration ?? 0
-                 }
-             }
         }
     }
 
