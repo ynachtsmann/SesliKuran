@@ -264,6 +264,9 @@ final class AudioManager: NSObject, ObservableObject {
         // if removeAllItems triggers an item change observation.
         removeObservers()
 
+        // Safety: Ensure scrubbing state is reset
+        cancelScrubbing()
+
         queueLoadingTask?.cancel() // Stop any background loading
         queueLoadingTask = nil
         player?.pause()
@@ -410,6 +413,12 @@ final class AudioManager: NSObject, ObservableObject {
         }
     }
     
+    func cancelScrubbing() {
+        // Safety Reset: Force scrubbing state to false to unblock UI updates.
+        // We do NOT seek here; we assume the scrubbing was aborted (e.g. backgrounding).
+        isScrubbing = false
+    }
+
     func skipForward() {
         seek(to: currentTime + 15)
     }
@@ -473,6 +482,9 @@ final class AudioManager: NSObject, ObservableObject {
     }
 
     private func handleTrackChange() {
+        // Safety: Reset scrubbing state on track change to prevent sticky slider
+        cancelScrubbing()
+
         guard let item = player?.currentItem else {
             // Queue finished?
             if isPlaying { // If we were playing and now nil, queue ended.
@@ -645,6 +657,7 @@ final class AudioManager: NSObject, ObservableObject {
             switch type {
             case .began:
                 self.pause()
+                self.cancelScrubbing()
             case .ended:
                 if let optionsValue = userInfo[AVAudioSessionInterruptionOptionKey] as? UInt {
                     let options = AVAudioSession.InterruptionOptions(rawValue: optionsValue)
