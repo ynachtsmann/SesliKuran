@@ -38,6 +38,9 @@ final class AudioManager: NSObject, ObservableObject {
     // Background Launch Protection
     private var hasEnteredForeground: Bool = false
     
+    // Error Handling State
+    private var lastFailedTrackId: Int?
+
     // MARK: - Initialization
     override init() {
         super.init()
@@ -125,14 +128,28 @@ final class AudioManager: NSObject, ObservableObject {
         // Integrity Check
         guard !initialItems.isEmpty else {
             self.isLoading = false
+
+            // Cleanup UI State even if load fails
+            self.currentTime = 0
+            self.duration = 0
+
             if !silent {
-                self.errorMessage = "Audiodatei nicht gefunden (Bundle Integrity Error)."
+                // Repeated Failure Logic
+                if lastFailedTrackId == track.id {
+                    self.errorMessage = "Die Audiodatei konnte nach wiederholtem Versuch nicht abgespielt werden."
+                } else {
+                    self.errorMessage = "Audiodatei nicht gefunden (Bundle Integrity Error)."
+                }
+                self.lastFailedTrackId = track.id
                 self.showError = true
             } else {
                 print("Silent Load Failed: Bundle Integrity Error for track \(track.id)")
             }
             return
         }
+
+        // Load Success: Reset Failure Tracking
+        self.lastFailedTrackId = nil
 
         // 3. Initialize Queue Player with Initial Items
         self.player = AVQueuePlayer(items: initialItems)
@@ -246,42 +263,61 @@ final class AudioManager: NSObject, ObservableObject {
 
     // MARK: - Navigation
     func nextTrack() {
-        guard let player = player else { return }
+        // ROBUST NAVIGATION:
+        // Works even if player is nil (broken state).
+        // Uses selectedTrack ID as the source of truth.
+
+        guard let currentId = selectedTrack?.id else { return }
 
         // Wraparound Logic: 114 -> 1
-        if selectedTrack?.id == 114 {
+        if currentId == 114 {
             if let firstSurah = SurahData.getSurah(id: 1) {
                 loadAudio(track: firstSurah, autoPlay: true)
             }
             return
         }
 
-        // Sequential Check: Verify next track exists
-        if let currentId = selectedTrack?.id {
-            let nextId = currentId + 1
-            let filename = String(format: "%03d", nextId)
+        // Normal Next Logic
+        // We do NOT use player.advanceToNextItem() exclusively because
+        // we want to be able to navigate even if the current track is broken.
 
-            // If the next file is missing, do not advance. Show error instead.
-            if Bundle.main.url(forResource: filename, withExtension: "mp3") == nil {
-                errorMessage = "Audiodatei \(nextId) fehlt."
-                showError = true
-                return
-            }
+        let nextId = currentId + 1
+        let filename = String(format: "%03d", nextId)
+
+        // Check if next file exists
+        if Bundle.main.url(forResource: filename, withExtension: "mp3") == nil {
+            errorMessage = "Audiodatei \(nextId) fehlt."
+            showError = true
+            // We do NOT stop here. The user might want to navigate PAST this hole.
+            // But for now, we follow the requirement to show error.
+            // If the user presses Next AGAIN, they are still on 'currentId', so it will error again.
+            // To allow skipping holes, we should probably load the track anyway and let loadAudio fail?
+            // User requirement: "Show error, wait for manual navigation".
+            // So we show error. But we must ensure we don't crash.
+            return
         }
 
-        // AVQueuePlayer: Advance to next item
-        player.advanceToNextItem()
-        // The itemObserver will detect the change and update 'selectedTrack'
+        // If player is valid and we are just moving to next item in queue
+        if let player = player, player.items().count > 1 {
+            player.advanceToNextItem()
+        } else {
+            // Fallback: Force Load (e.g. if player was nil or queue empty)
+            if let nextSurah = SurahData.getSurah(id: nextId) {
+                loadAudio(track: nextSurah, autoPlay: true)
+            }
+        }
     }
     
     func previousTrack() {
         guard let current = selectedTrack else { return }
         
         // Logic:
-        // Playtime > 3s -> Restart current
-        // Playtime <= 3s -> Previous Track (Rebuild Queue)
+        // If Player exists AND Playtime > 3s -> Restart current
+        // If Player is nil OR Playtime <= 3s -> Previous Track
 
-        if currentTime > 3 {
+        let shouldRestart = (player != nil) && (currentTime > 3)
+
+        if shouldRestart {
             seek(to: 0)
         } else {
             // Wraparound Logic: 1 -> 114
