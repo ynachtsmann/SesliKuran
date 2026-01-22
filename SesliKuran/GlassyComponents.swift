@@ -184,15 +184,45 @@ struct NeumorphicSlider: View {
                 .allowsHitTesting(false) // Pass touches through visual elements
             }
 
-            // 3. Interactive Slider (Top Layer)
-            // This is the actual slider that captures touches.
-            Slider(value: $value, in: inRange, onEditingChanged: { editing in
-                isDragging = editing
-                onEditingChanged(editing)
-            })
-            .accentColor(.clear) // Hide default thumb color
-            .opacity(0.05) // Almost invisible but hit-testable
+            // 3. Interactive Touch Layer (Replaces Slider for Robustness)
+            // Using DragGesture gives us absolute control over the "End" state,
+            // preventing the slider from freezing if dragged off-bounds.
+            GeometryReader { geometry in
+                Color.white.opacity(0.001) // Invisible but hit-testable
+                    .gesture(
+                        DragGesture(minimumDistance: 0)
+                            .onChanged { gesture in
+                                if !isDragging {
+                                    isDragging = true
+                                    onEditingChanged(true)
+                                }
+                                updateValue(at: gesture.location, in: geometry.size)
+                            }
+                            .onEnded { _ in
+                                isDragging = false
+                                onEditingChanged(false)
+                            }
+                    )
+            }
         }
         .frame(height: 44) // Tappable area height
+    }
+
+    // MARK: - Helper for Gesture Calculation
+    private func updateValue(at point: CGPoint, in size: CGSize) {
+        let rangeDistance = inRange.upperBound - inRange.lowerBound
+        guard rangeDistance > 0, size.width > 0 else { return }
+
+        // Calculate progress (0.0 to 1.0) based on horizontal position
+        let percentage = point.x / size.width
+
+        // Clamp securely between 0 and 1
+        let clampedPercentage = min(max(Double(percentage), 0), 1)
+
+        // Map to actual value range
+        let newValue = inRange.lowerBound + (clampedPercentage * rangeDistance)
+
+        // Update binding
+        value = newValue
     }
 }
