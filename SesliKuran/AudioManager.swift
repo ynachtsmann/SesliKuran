@@ -460,6 +460,12 @@ final class AudioManager: NSObject, ObservableObject {
         saveCurrentPosition() // Save preference
     }
 
+    // MARK: - Theme Management
+    func updateLockScreenTheme(isDark: Bool) {
+        // Force update of Now Playing Info with the specific theme trait
+        updateNowPlayingInfo(isDark: isDark)
+    }
+
     // MARK: - Observers & State Management
     private func setupObservers() {
         guard let player = player else { return }
@@ -667,7 +673,7 @@ final class AudioManager: NSObject, ObservableObject {
         }
     }
     
-    private func updateNowPlayingInfo() {
+    private func updateNowPlayingInfo(isDark: Bool? = nil) {
         guard let track = selectedTrack else {
             MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
             return
@@ -683,7 +689,16 @@ final class AudioManager: NSObject, ObservableObject {
         info[MPNowPlayingInfoPropertyPlaybackRate] = isPlaying ? playbackRate : 0.0
 
         // Lock Screen Artwork (Uses user's Light/Dark icon)
-        if let image = UIImage(named: "LockScreenLogo") {
+        // If isDark is explicitly provided (e.g. from ThemeManager), force that trait.
+        // Otherwise, fallback to 'nil' which uses UITraitCollection.current.
+        let traits: UITraitCollection?
+        if let isDark = isDark {
+            traits = UITraitCollection(userInterfaceStyle: isDark ? .dark : .light)
+        } else {
+            traits = nil
+        }
+
+        if let image = UIImage(named: "LockScreenLogo", in: nil, compatibleWith: traits) {
             info[MPMediaItemPropertyArtwork] = MPMediaItemArtwork(boundsSize: image.size) { _ in
                 return image
             }
