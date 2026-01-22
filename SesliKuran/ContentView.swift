@@ -33,71 +33,15 @@ struct ContentView: View {
                 // Layer 2: Main Content Container (Strictly Windowed)
                 // We apply explicit padding to create the "Safe Window".
                 // This ZStack acts as the "Safe Area" where all controls live.
-                ZStack {
-                    if isLandscape {
-                        // LANDSCAPE LAYOUT (Split View)
-                        // Using a GeometryReader here to strictly enforce the split ratio
-                        GeometryReader { innerGeo in
-                            HStack(spacing: 0) {
-                                // Left Side: Art (Centered vertically)
-                                ZStack {
-                                    // Calculate Art Size for Landscape
-                                    let dimension = min(geometry.size.width, geometry.size.height)
-                                    let scaleFactor = config.artScaleFactor * 0.8 // Slightly smaller in split view
-                                    let artSize = dimension * scaleFactor
-
-                                    NowPlayingView(size: artSize, scale: scale)
-                                }
-                                .frame(width: innerGeo.size.width * config.splitViewRatio)
-                                .frame(maxHeight: .infinity)
-
-                                // Right Side: Controls & Info
-                                let rightPaneWidth = innerGeo.size.width * (1 - config.splitViewRatio)
-                                VStack(spacing: config.controlSpacing * scale) {
-                                    // Header inside the right pane
-                                    HeaderView(showSlotSelection: $showSlotSelection, scale: scale)
-
-                                    Spacer()
-
-                                    TrackInfoView(scale: scale)
-
-                                    TimeSliderView(scale: scale)
-                                        .padding(.horizontal)
-
-                                    // Pass explicit width so spacing is calculated relative to PANE, not Screen
-                                    ControlSectionView(scale: scale, availableWidth: rightPaneWidth)
-
-                                    Spacer()
-                                }
-                                .frame(width: rightPaneWidth)
-                                .frame(maxHeight: .infinity)
-                            }
-                        }
-                    } else {
-                        // PORTRAIT LAYOUT (Original VStack)
-                        VStack(spacing: config.controlSpacing * scale) {
-                            HeaderView(showSlotSelection: $showSlotSelection, scale: scale)
-                            Spacer()
-
-                            // Calculate Art Size for Portrait
-                            let dimension = min(geometry.size.width, geometry.size.height)
-                            let scaleFactor = config.artScaleFactor
-                            let artSize = dimension * scaleFactor
-
-                            NowPlayingView(size: artSize, scale: scale)
-
-                            TrackInfoView(scale: scale)
-
-                            TimeSliderView(scale: scale)
-                                .padding(.horizontal)
-
-                            // Pass explicit width
-                            ControlSectionView(scale: scale, availableWidth: geometry.size.width)
-                            Spacer()
-                        }
-                    }
-                }
-                .padding(containerPadding) // Apply the strict "Window" padding
+                InnerContentView(
+                    showSlotSelection: $showSlotSelection,
+                    isLandscape: isLandscape,
+                    scale: scale,
+                    geometrySize: geometry.size,
+                    config: config,
+                    containerPadding: containerPadding
+                )
+                .equatable() // Optimization: Prevent redraw if layout params don't change
                 .frame(width: geometry.size.width, height: geometry.size.height) // Match Geometry Size
 
                 // Layer 3: Audio List Overlay (True Floating Modal)
@@ -154,6 +98,94 @@ struct ContentView: View {
             }
         }
         .edgesIgnoringSafeArea(.all) // Ensure GeometryReader covers the full screen (Edge-to-Edge)
+    }
+}
+
+// MARK: - Inner Content View (Optimization)
+// This view extracts the layout logic so it can be Equatable.
+// It DOES NOT observe AudioManager directly, so it won't redraw on every time tick.
+// The child views (like PlayerControlsView) will observe AudioManager independently.
+struct InnerContentView: View, Equatable {
+    @Binding var showSlotSelection: Bool
+    let isLandscape: Bool
+    let scale: CGFloat
+    let geometrySize: CGSize
+    let config: DeviceLayoutConfig
+    let containerPadding: EdgeInsets
+
+    // Equatable Conformance
+    static func == (lhs: InnerContentView, rhs: InnerContentView) -> Bool {
+        return lhs.isLandscape == rhs.isLandscape &&
+               lhs.scale == rhs.scale &&
+               lhs.geometrySize == rhs.geometrySize &&
+               lhs.config == rhs.config &&
+               lhs.containerPadding == rhs.containerPadding &&
+               lhs.showSlotSelection == rhs.showSlotSelection
+    }
+
+    var body: some View {
+        ZStack {
+            if isLandscape {
+                // LANDSCAPE LAYOUT (Split View)
+                // Using a GeometryReader here to strictly enforce the split ratio
+                GeometryReader { innerGeo in
+                    HStack(spacing: 0) {
+                        // Left Side: Art (Centered vertically)
+                        ZStack {
+                            // Calculate Art Size for Landscape
+                            let dimension = min(geometrySize.width, geometrySize.height)
+                            let scaleFactor = config.artScaleFactor * 0.8 // Slightly smaller in split view
+                            let artSize = dimension * scaleFactor
+
+                            NowPlayingView(size: artSize, scale: scale)
+                        }
+                        .frame(width: innerGeo.size.width * config.splitViewRatio)
+                        .frame(maxHeight: .infinity)
+
+                        // Right Side: Controls & Info
+                        let rightPaneWidth = innerGeo.size.width * (1 - config.splitViewRatio)
+                        VStack(spacing: config.controlSpacing * scale) {
+                            // Header inside the right pane
+                            HeaderView(showSlotSelection: $showSlotSelection, scale: scale)
+
+                            Spacer()
+
+                            TrackInfoView(scale: scale)
+
+                            // Unified Player Controls (Slider + Buttons)
+                            PlayerControlsView(scale: scale, availableWidth: rightPaneWidth)
+                                .equatable() // Optimization
+
+                            Spacer()
+                        }
+                        .frame(width: rightPaneWidth)
+                        .frame(maxHeight: .infinity)
+                    }
+                }
+            } else {
+                // PORTRAIT LAYOUT (Original VStack)
+                VStack(spacing: config.controlSpacing * scale) {
+                    HeaderView(showSlotSelection: $showSlotSelection, scale: scale)
+                    Spacer()
+
+                    // Calculate Art Size for Portrait
+                    let dimension = min(geometrySize.width, geometrySize.height)
+                    let scaleFactor = config.artScaleFactor
+                    let artSize = dimension * scaleFactor
+
+                    NowPlayingView(size: artSize, scale: scale)
+
+                    TrackInfoView(scale: scale)
+
+                    // Unified Player Controls (Slider + Buttons)
+                    PlayerControlsView(scale: scale, availableWidth: geometrySize.width)
+                        .equatable() // Optimization
+
+                    Spacer()
+                }
+            }
+        }
+        .padding(containerPadding)
     }
 }
 

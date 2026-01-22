@@ -44,6 +44,9 @@ final class AudioManager: NSObject, ObservableObject {
     // Error Handling State
     private var lastFailedTrackId: Int?
 
+    // Smart Rewind State
+    private var lastPauseDate: Date?
+
     // MARK: - Initialization
     override init() {
         super.init()
@@ -231,6 +234,21 @@ final class AudioManager: NSObject, ObservableObject {
     // MARK: - Playback Controls
     func play() {
         guard let player = player else { return }
+
+        // Smart Rewind Logic
+        if let lastPauseDate = lastPauseDate {
+            let elapsed = Date().timeIntervalSince(lastPauseDate)
+            if elapsed > 60 {
+                // Rewind 2 seconds if paused for > 60s
+                let newTime = max(0, currentTime - 2.0)
+                // Use seek with zero tolerance for immediate update
+                let cmTime = CMTime(seconds: newTime, preferredTimescale: 600)
+                player.seek(to: cmTime, toleranceBefore: .zero, toleranceAfter: .zero)
+                self.currentTime = newTime // Update UI immediately
+            }
+            self.lastPauseDate = nil
+        }
+
         player.rate = playbackRate // Applies speed AND starts playback (if rate > 0)
         isPlaying = true
         startSavePositionTask()
@@ -240,6 +258,7 @@ final class AudioManager: NSObject, ObservableObject {
     func pause() {
         player?.pause()
         isPlaying = false
+        lastPauseDate = Date()
         saveCurrentPosition()
         stopSavePositionTask()
         updateNowPlayingInfo()
@@ -485,6 +504,9 @@ final class AudioManager: NSObject, ObservableObject {
         // Safety: Reset scrubbing state on track change to prevent sticky slider
         cancelScrubbing()
 
+        // Immediate Persistence: Save state on track change to prevent data loss
+        saveCurrentPosition()
+
         guard let item = player?.currentItem else {
             // Queue finished?
             if isPlaying { // If we were playing and now nil, queue ended.
@@ -598,6 +620,7 @@ final class AudioManager: NSObject, ObservableObject {
     private func setupRemoteCommandCenter() {
         let commandCenter = MPRemoteCommandCenter.shared()
 
+        // 1. Play / Pause
         commandCenter.playCommand.addTarget { [weak self] _ in
              Task { @MainActor in self?.play() }
              return .success
@@ -606,14 +629,25 @@ final class AudioManager: NSObject, ObservableObject {
              Task { @MainActor in self?.pause() }
              return .success
         }
-        commandCenter.nextTrackCommand.addTarget { [weak self] _ in
-             Task { @MainActor in self?.nextTrack() }
-             return .success
+
+        // 2. Disable Next/Prev (Audiobook Safety)
+        commandCenter.nextTrackCommand.isEnabled = false
+        commandCenter.previousTrackCommand.isEnabled = false
+
+        // 3. Enable Skip Forward/Backward (15s)
+        commandCenter.skipForwardCommand.preferredIntervals = [15]
+        commandCenter.skipForwardCommand.addTarget { [weak self] _ in
+            Task { @MainActor in self?.skipForward() }
+            return .success
         }
-        commandCenter.previousTrackCommand.addTarget { [weak self] _ in
-             Task { @MainActor in self?.previousTrack() }
-             return .success
+
+        commandCenter.skipBackwardCommand.preferredIntervals = [15]
+        commandCenter.skipBackwardCommand.addTarget { [weak self] _ in
+            Task { @MainActor in self?.skipBackward() }
+            return .success
         }
+
+        // 4. Scrubbing
         commandCenter.changePlaybackPositionCommand.addTarget { [weak self] event in
              guard let event = event as? MPChangePlaybackPositionCommandEvent else { return .commandFailed }
              Task { @MainActor in self?.seek(to: event.positionTime) }
