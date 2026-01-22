@@ -674,11 +674,20 @@ final class AudioManager: NSObject, ObservableObject {
         }
         
         var info = [String: Any]()
-        info[MPMediaItemPropertyTitle] = track.name
-        info[MPMediaItemPropertyArtist] = track.germanName
+        // Enhanced Title: "Al-Baqara - Die Kuh"
+        info[MPMediaItemPropertyTitle] = "\(track.name) - \(track.germanName)"
+        // Enhanced Subtitle (Artist): "Sure 2"
+        info[MPMediaItemPropertyArtist] = "Sure \(track.id)"
         info[MPMediaItemPropertyPlaybackDuration] = duration
         info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = currentTime
         info[MPNowPlayingInfoPropertyPlaybackRate] = isPlaying ? playbackRate : 0.0
+
+        // Lock Screen Artwork (Uses user's Light/Dark icon)
+        if let image = UIImage(named: "LockScreenLogo") {
+            info[MPMediaItemPropertyArtwork] = MPMediaItemArtwork(boundsSize: image.size) { _ in
+                return image
+            }
+        }
 
         MPNowPlayingInfoCenter.default().nowPlayingInfo = info
     }
