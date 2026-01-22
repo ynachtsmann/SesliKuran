@@ -551,6 +551,12 @@ final class AudioManager: NSObject, ObservableObject {
                 // Update UI State
                 self.selectedTrack = surah
 
+                // LOCK SCREEN FIX: Reset State Immediately
+                // This clears the "stuck at end" state on the Lock Screen
+                self.currentTime = 0
+                self.duration = 0
+                self.updateNowPlayingInfo()
+
                 // Get Duration (Async)
                 Task {
                     let duration = try? await asset.load(.duration).seconds
