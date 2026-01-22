@@ -1,8 +1,15 @@
 import SwiftUI
 
-struct AuroraBackgroundView: View {
+struct AuroraBackgroundView: View, Equatable {
     @State private var startAnimation = false
     var isDarkMode: Bool
+
+    // MARK: - Equatable
+    // Critical for performance: Ensures this heavy view is NOT re-evaluated
+    // if the inputs (isDarkMode) have not changed.
+    static func == (lhs: AuroraBackgroundView, rhs: AuroraBackgroundView) -> Bool {
+        return lhs.isDarkMode == rhs.isDarkMode
+    }
 
     var body: some View {
         GeometryReader { proxy in
