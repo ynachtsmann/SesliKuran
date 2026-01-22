@@ -384,6 +384,12 @@ final class AudioManager: NSObject, ObservableObject {
     
     func seek(to time: TimeInterval) {
         guard let player = player else { return }
+
+        // Optimistic UI & Lock Screen Sync:
+        // Update currentTime immediately so updateNowPlayingInfo() sends the NEW time.
+        // This fixes the "frozen Lock Screen timer" bug when skipping/scrubbing.
+        self.currentTime = time
+
         let cmTime = CMTime(seconds: time, preferredTimescale: 600)
         player.seek(to: cmTime)
         updateNowPlayingInfo()
