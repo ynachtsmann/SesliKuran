@@ -110,7 +110,7 @@ struct InnerContentView: View, Equatable {
     let isLandscape: Bool
     let scale: CGFloat
     let geometrySize: CGSize
-    let config: DeviceLayoutConfig
+    let config: LayoutConfig
     let containerPadding: EdgeInsets
 
     // Equatable Conformance

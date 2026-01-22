@@ -3,7 +3,7 @@ import UIKit
 
 // MARK: - Layout Configuration
 /// Defines the specific layout constants for the current device environment.
-struct LayoutConfig {
+struct LayoutConfig: Equatable {
     /// The minimum distance from the screen edge (inside the Safe Area).
     let contentMargin: CGFloat
 
