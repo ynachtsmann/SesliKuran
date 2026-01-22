@@ -46,11 +46,17 @@ struct MyMusicApp: App {
             // Force the System UI Status Bar (Battery, Signal, Time) to match the App Theme
             .preferredColorScheme(themeManager.isDarkMode ? .dark : .light)
         }
+        // Lock Screen Theme Sync:
+        // Ensures Lock Screen artwork updates immediately when App Theme changes (Manual)
+        .onChange(of: themeManager.isDarkMode) { _, isDark in
+            audioManager.updateLockScreenTheme(isDark: isDark)
+        }
         .onChange(of: scenePhase) { _, newPhase in
             switch newPhase {
             case .active:
                 // App is now active
-                break
+                // Ensure Lock Screen matches current App Theme on return (System settings might have changed)
+                audioManager.updateLockScreenTheme(isDark: themeManager.isDarkMode)
             case .background, .inactive:
                 // Mission Critical: Ensure Persistence Flush
                 // We explicitly trigger a save to guarantee state is captured even for short sessions.
