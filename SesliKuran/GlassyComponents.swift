@@ -111,10 +111,11 @@ struct GlassyControlButton: View {
 struct NeumorphicSlider: View {
     @Binding var value: Double
     var inRange: ClosedRange<Double>
-    @Binding var isDragging: Bool // Lifted state to binding
     var onEditingChanged: (Bool) -> Void = { _ in }
     var isDarkMode: Bool // Added theme parameter
     var timeFormatter: ((Double) -> String)? = nil // Optional formatter for floating label
+
+    @State private var isDraggingLocal: Bool = false
 
     // Computed property to centralize progress calculation (DRY Principle)
     private var progress: CGFloat {
@@ -123,69 +124,71 @@ struct NeumorphicSlider: View {
     }
 
     var body: some View {
-        ZStack {
-            // 1. Custom Visual Track
-            GeometryReader { geometry in
-                ZStack(alignment: .leading) {
-                    // Track - SLEEKER DESIGN (Very Thin)
-                    Capsule()
-                        .fill(isDarkMode ? Color.white.opacity(0.1) : Color.black.opacity(0.05))
-                        .frame(height: 3) // Further reduced to 3 for elegance
+        GeometryReader { geometry in
+            ZStack(alignment: .leading) {
+                // Track - SLEEKER DESIGN (Very Thin)
+                Capsule()
+                    .fill(isDarkMode ? Color.white.opacity(0.1) : Color.black.opacity(0.05))
+                    .frame(height: 3) // Further reduced to 3 for elegance
 
-                    // Progress - Gradient Fill
-                    Capsule()
-                        .fill(
-                            LinearGradient(
-                                gradient: Gradient(colors: ThemeColors.gradientColors(isDarkMode: isDarkMode)),
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
+                // Progress - Gradient Fill
+                Capsule()
+                    .fill(
+                        LinearGradient(
+                            gradient: Gradient(colors: ThemeColors.gradientColors(isDarkMode: isDarkMode)),
+                            startPoint: .leading,
+                            endPoint: .trailing
                         )
-                        .frame(width: geometry.size.width * progress, height: 3)
-                }
-                .frame(height: 44) // Center vertically in the ZStack
+                    )
+                    .frame(width: geometry.size.width * progress, height: 3)
             }
-
-            // 2. Visible Custom Knob & Label (Visual Overlay)
-            GeometryReader { geometry in
-                ZStack {
-                    // The Knob
-                    Circle()
-                        .fill(ThemeColors.buttonForeground(isDarkMode: isDarkMode))
-                        .frame(width: 10, height: 10) // Reduced to 10 for very fine look
-                        .shadow(radius: 2)
-                        .position(
-                            x: geometry.size.width * progress,
-                            y: geometry.size.height / 2
-                        )
-
-                    // Floating Time Label (Visible on Drag)
-                    if isDragging, let formatter = timeFormatter {
-                        Text(formatter(value))
-                            .font(.system(size: 12, weight: .bold, design: .monospaced))
-                            .foregroundStyle(ThemeColors.buttonForeground(isDarkMode: isDarkMode))
-                            .padding(6)
-                            // Background removed per user request
-                            // Offset above the knob
-                            .position(
-                                x: geometry.size.width * progress,
-                                y: (geometry.size.height / 2) - 30
-                            )
-                            .transition(.opacity.animation(.easeInOut(duration: 0.2)))
-                    }
-                }
-                .allowsHitTesting(false) // Pass touches through visual elements
-            }
-
-            // 3. Interactive Slider (Top Layer)
-            // This is the actual slider that captures touches.
-            Slider(value: $value, in: inRange, onEditingChanged: { editing in
-                isDragging = editing
-                onEditingChanged(editing)
-            })
-            .accentColor(.clear) // Hide default thumb color
-            .opacity(0.05) // Almost invisible but hit-testable
+            .frame(height: 44) // Keep 44pt height for easy tapping
+            .contentShape(Rectangle()) // Make the whole area tappable
         }
         .frame(height: 44) // Tappable area height
+        .overlay(
+            Slider(value: $value, in: inRange, onEditingChanged: { editing in
+                isDraggingLocal = editing
+                onEditingChanged(editing)
+            })
+            .accentColor(.clear) // Hide default knob color
+            .opacity(0.05) // Invisible but interactable
+        )
+        // Visible custom knob - Refined
+        .overlay(
+             GeometryReader { geometry in
+                 ZStack {
+                     // The Knob
+                     Circle()
+                         .fill(ThemeColors.buttonForeground(isDarkMode: isDarkMode))
+                         .frame(width: 10, height: 10) // Reduced to 10 for very fine look
+                         .shadow(radius: 2)
+                         .position(
+                            x: geometry.size.width * progress,
+                            y: geometry.size.height / 2
+                         )
+
+                     // Floating Time Label (Visible on Drag)
+                     if isDraggingLocal, let formatter = timeFormatter {
+                         Text(formatter(value))
+                             .font(.system(size: 12, weight: .bold, design: .monospaced))
+                             .foregroundStyle(ThemeColors.buttonForeground(isDarkMode: isDarkMode))
+                             .padding(6)
+                             .background(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(isDarkMode ? Color.black.opacity(0.8) : Color.white.opacity(0.9))
+                                    .shadow(radius: 4)
+                             )
+                             // Offset above the knob
+                             .position(
+                                x: geometry.size.width * progress,
+                                y: (geometry.size.height / 2) - 30
+                             )
+                             .transition(.opacity.animation(.easeInOut(duration: 0.2)))
+                     }
+                 }
+                 .allowsHitTesting(false) // Let touches pass to the slider
+             }
+        )
     }
 }

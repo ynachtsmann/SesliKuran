@@ -52,12 +52,7 @@ final class AudioManager: NSObject, ObservableObject {
         // Restore Settings
         let lastID = await PersistenceManager.shared.getLastPlayedSurahId()
         let speed = await PersistenceManager.shared.getPlaybackSpeed()
-        var lastTime = await PersistenceManager.shared.getLastPosition(for: lastID)
-
-        // Smart Resume: If less than 5 seconds, reset to 0 to avoid annoyance
-        if lastTime < 5 {
-            lastTime = 0
-        }
+        let lastTime = await PersistenceManager.shared.getLastPosition(for: lastID)
 
         self.playbackRate = speed
 
@@ -338,6 +333,9 @@ final class AudioManager: NSObject, ObservableObject {
                 // Update UI State
                 self.selectedTrack = surah
 
+                // FORCE RESET Lock Screen immediately (Fixes sticky slider)
+                self.updateNowPlayingInfo(forcedTime: 0)
+
                 // Get Duration (Async)
                 Task {
                     let duration = try? await asset.load(.duration).seconds
@@ -434,7 +432,7 @@ final class AudioManager: NSObject, ObservableObject {
         }
     }
     
-    private func updateNowPlayingInfo() {
+    private func updateNowPlayingInfo(forcedTime: TimeInterval? = nil) {
         guard let track = selectedTrack else {
             MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
             return
@@ -444,7 +442,10 @@ final class AudioManager: NSObject, ObservableObject {
         info[MPMediaItemPropertyTitle] = track.name
         info[MPMediaItemPropertyArtist] = track.germanName
         info[MPMediaItemPropertyPlaybackDuration] = duration
-        info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = currentTime
+
+        // Use forced time if provided (for immediate resets), otherwise current player time
+        info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = forcedTime ?? player?.currentTime().seconds ?? currentTime
+
         info[MPNowPlayingInfoPropertyPlaybackRate] = isPlaying ? playbackRate : 0.0
 
         MPNowPlayingInfoCenter.default().nowPlayingInfo = info
