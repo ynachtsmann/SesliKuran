@@ -693,7 +693,7 @@ final class AudioManager: NSObject, ObservableObject {
         // Enhanced Subtitle (Artist): "Sure 2"
         info[MPMediaItemPropertyArtist] = "Sure \(track.id)"
         info[MPMediaItemPropertyAlbumTitle] = "Sesli Kuran"
-        info[MPMediaItemPropertyMediaType] = MPMediaType.music.rawValue
+        info[MPMediaItemPropertyMediaType] = MPMediaType.audioBook.rawValue
 
         info[MPMediaItemPropertyPlaybackDuration] = duration
         info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = currentTime
