@@ -704,7 +704,12 @@ final class AudioManager: NSObject, ObservableObject {
         let useDark = isDark ?? self.isDarkMode
         let traits = UITraitCollection(userInterfaceStyle: useDark ? .dark : .light)
 
-        if let image = UIImage(named: "LockScreenLogo", in: nil, compatibleWith: traits) {
+        // Detect Landscape vs Portrait
+        let orientation = UIDevice.current.orientation
+        let isLandscape = orientation == .landscapeLeft || orientation == .landscapeRight
+        let imageName = isLandscape ? "LockScreenLogoLandscape" : "LockScreenLogo"
+
+        if let image = UIImage(named: imageName, in: nil, compatibleWith: traits) {
             info[MPMediaItemPropertyArtwork] = MPMediaItemArtwork(boundsSize: image.size) { _ in
                 return image
             }
