@@ -45,6 +45,10 @@ struct MyMusicApp: App {
             }
             // Force the System UI Status Bar (Battery, Signal, Time) to match the App Theme
             .preferredColorScheme(themeManager.isDarkMode ? .dark : .light)
+            .onAppear {
+                // Initial Sync: Ensure AudioManager knows the correct theme immediately on launch
+                audioManager.updateLockScreenTheme(isDark: themeManager.isDarkMode)
+            }
         }
         // Lock Screen Theme Sync:
         // Ensures Lock Screen artwork updates immediately when App Theme changes (Manual)

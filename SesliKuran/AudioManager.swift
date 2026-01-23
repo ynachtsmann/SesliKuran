@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import AVFoundation
 import MediaPlayer
 
@@ -25,6 +26,9 @@ final class AudioManager: NSObject, ObservableObject {
     @Published var sleepTimerTimeRemaining: TimeInterval = 0
     @Published var isSleepTimerActive: Bool = false
 
+    // Theme State
+    private var isDarkMode: Bool = false
+
     // MARK: - Internal Components
     private var player: AVQueuePlayer?
 
@@ -50,6 +54,9 @@ final class AudioManager: NSObject, ObservableObject {
     // MARK: - Initialization
     override init() {
         super.init()
+        // Begin generating device orientation notifications for landscape updates
+        UIDevice.current.beginGeneratingDeviceOrientationNotifications()
+
         setupRemoteCommandCenter()
         setupNotifications()
     }
@@ -462,6 +469,7 @@ final class AudioManager: NSObject, ObservableObject {
 
     // MARK: - Theme Management
     func updateLockScreenTheme(isDark: Bool) {
+        self.isDarkMode = isDark
         // Force update of Now Playing Info with the specific theme trait
         updateNowPlayingInfo(isDark: isDark)
     }
@@ -684,19 +692,17 @@ final class AudioManager: NSObject, ObservableObject {
         info[MPMediaItemPropertyTitle] = "\(track.name) - \(track.germanName)"
         // Enhanced Subtitle (Artist): "Sure 2"
         info[MPMediaItemPropertyArtist] = "Sure \(track.id)"
+        info[MPMediaItemPropertyAlbumTitle] = "Sesli Kuran"
+        info[MPMediaItemPropertyMediaType] = MPMediaItemMediaType.music.rawValue
+
         info[MPMediaItemPropertyPlaybackDuration] = duration
         info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = currentTime
         info[MPNowPlayingInfoPropertyPlaybackRate] = isPlaying ? playbackRate : 0.0
 
         // Lock Screen Artwork (Uses user's Light/Dark icon)
-        // If isDark is explicitly provided (e.g. from ThemeManager), force that trait.
-        // Otherwise, fallback to 'nil' which uses UITraitCollection.current.
-        let traits: UITraitCollection?
-        if let isDark = isDark {
-            traits = UITraitCollection(userInterfaceStyle: isDark ? .dark : .light)
-        } else {
-            traits = nil
-        }
+        // Logic: Use param if present, else use stored state.
+        let useDark = isDark ?? self.isDarkMode
+        let traits = UITraitCollection(userInterfaceStyle: useDark ? .dark : .light)
 
         if let image = UIImage(named: "LockScreenLogo", in: nil, compatibleWith: traits) {
             info[MPMediaItemPropertyArtwork] = MPMediaItemArtwork(boundsSize: image.size) { _ in
@@ -712,6 +718,13 @@ final class AudioManager: NSObject, ObservableObject {
         let center = NotificationCenter.default
         center.addObserver(self, selector: #selector(handleInterruption), name: AVAudioSession.interruptionNotification, object: nil)
         center.addObserver(self, selector: #selector(handleAppDidBecomeActive), name: UIApplication.didBecomeActiveNotification, object: nil)
+        center.addObserver(self, selector: #selector(handleOrientationChange), name: UIDevice.orientationDidChangeNotification, object: nil)
+    }
+
+    @objc private func handleOrientationChange() {
+        Task { @MainActor in
+            self.updateNowPlayingInfo()
+        }
     }
 
     @objc private func handleAppDidBecomeActive() {
