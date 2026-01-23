@@ -704,7 +704,25 @@ final class AudioManager: NSObject, ObservableObject {
         let useDark = isDark ?? self.isDarkMode
         let traits = UITraitCollection(userInterfaceStyle: useDark ? .dark : .light)
 
-        if let image = UIImage(named: "LockScreenLogo", in: nil, compatibleWith: traits) {
+        // Native Asset Catalog Logic:
+        // We use "LockScreenLogo" which is configured with Size Classes in Assets.xcassets.
+        // - Portrait (Any Height) -> Square Image
+        // - Landscape (Compact Height) -> Landscape Image
+        // The 'traits' collection does NOT include Size Class info by default when just checking .dark/.light.
+        // We must rely on the CURRENT device state for Size Classes (which UIImage(named:) uses by default).
+        // BUT we need to force the User Interface Style (Light/Dark) which might differ from system.
+
+        // We combine the current size class traits with our specific color scheme trait.
+        // This ensures orientation (Size Class) + Theme (Light/Dark) are both respected.
+
+        // Start with current traits (Size Class info)
+        let currentTraits = UITraitCollection.current
+        // Create our color override
+        let colorTrait = UITraitCollection(userInterfaceStyle: useDark ? .dark : .light)
+        // Merge them (Color trait overrides current system color trait)
+        let combinedTraits = UITraitCollection(traitsFrom: [currentTraits, colorTrait])
+
+        if let image = UIImage(named: "LockScreenLogo", in: nil, compatibleWith: combinedTraits) {
             info[MPMediaItemPropertyArtwork] = MPMediaItemArtwork(boundsSize: image.size) { _ in
                 return image
             }
