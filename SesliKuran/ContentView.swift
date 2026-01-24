@@ -124,7 +124,7 @@ struct InnerContentView: View, Equatable {
     }
 
     var body: some View {
-        ZStack {
+        ZStack(alignment: .top) {
             if isLandscape {
                 // LANDSCAPE LAYOUT (Split View)
                 // Using a GeometryReader here to strictly enforce the split ratio
@@ -132,9 +132,13 @@ struct InnerContentView: View, Equatable {
                     HStack(spacing: 0) {
                         // Left Side: Art (Centered vertically)
                         ZStack {
-                            // Calculate Art Size for Landscape
-                            let dimension = min(geometrySize.width, geometrySize.height)
-                            let scaleFactor = config.artScaleFactor * 0.8 // Slightly smaller in split view
+                            // Context-Aware Sizing: Use the SPLIT container size, not global screen
+                            let containerWidth = innerGeo.size.width * config.splitViewRatio
+                            let containerHeight = innerGeo.size.height
+                            let dimension = min(containerWidth, containerHeight)
+
+                            // Adjust scale factor for split view context
+                            let scaleFactor = config.artScaleFactor * 0.9
                             let artSize = dimension * scaleFactor
 
                             NowPlayingView(size: artSize, scale: scale)
@@ -144,16 +148,18 @@ struct InnerContentView: View, Equatable {
 
                         // Right Side: Controls & Info
                         let rightPaneWidth = innerGeo.size.width * (1 - config.splitViewRatio)
-                        VStack(spacing: config.controlSpacing * scale) {
-                            // Header inside the right pane
-                            HeaderView(showSlotSelection: $showSlotSelection, scale: scale)
 
+                        // Context-Aware Scaling for Controls
+                        // In landscape, height is the constraint. Adjust scale if needed.
+                        let landscapeControlScale = min(scale, innerGeo.size.height / 400.0)
+
+                        VStack(spacing: (config.controlSpacing * 0.8) * landscapeControlScale) {
                             Spacer()
 
-                            TrackInfoView(scale: scale)
+                            TrackInfoView(scale: landscapeControlScale)
 
                             // Unified Player Controls (Slider + Buttons)
-                            PlayerControlsView(scale: scale, availableWidth: rightPaneWidth)
+                            PlayerControlsView(scale: landscapeControlScale, availableWidth: rightPaneWidth)
                                 .equatable() // Optimization
 
                             Spacer()
@@ -165,7 +171,10 @@ struct InnerContentView: View, Equatable {
             } else {
                 // PORTRAIT LAYOUT (Original VStack)
                 VStack(spacing: config.controlSpacing * scale) {
-                    HeaderView(showSlotSelection: $showSlotSelection, scale: scale)
+                    // Spacer to clear the floating Header
+                    // Header is roughly 44pt + padding.
+                    Spacer().frame(height: 50 * scale)
+
                     Spacer()
 
                     // Calculate Art Size for Portrait
@@ -184,6 +193,11 @@ struct InnerContentView: View, Equatable {
                     Spacer()
                 }
             }
+
+            // MARK: - Global Floating Header
+            // Placed in ZStack to stay pinned to top, independent of content layout
+            HeaderView(showSlotSelection: $showSlotSelection, scale: scale)
+                .frame(maxWidth: .infinity)
         }
         .padding(containerPadding)
     }
