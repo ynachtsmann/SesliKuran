@@ -23,9 +23,13 @@ struct PlayerControlsView: View, Equatable {
     var body: some View {
         VStack(spacing: 20 * scale) {
             TimeSliderView(scale: scale)
-                .padding(.horizontal)
+                // Match the horizontal padding of ControlSectionView (40 * scale)
+                // This ensures the slider start/end points align perfectly with the button container edges.
+                .padding(.horizontal, 40 * scale)
 
             ControlSectionView(scale: scale, availableWidth: availableWidth)
         }
+        // Force the entire container to respect the available width
+        .frame(width: availableWidth)
     }
 }
