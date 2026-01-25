@@ -11,6 +11,8 @@ struct PlayerControlsView: View, Equatable {
     let scale: CGFloat
     let availableWidth: CGFloat
 
+    @State private var controlWidth: CGFloat = 0
+
     // MARK: - Equatable
     // If the layout parameters (scale, width) haven't changed, we don't need to rebuild the view structure.
     // However, since we observe AudioManager, the body WILL be re-evaluated when currentTime changes.
@@ -23,9 +25,25 @@ struct PlayerControlsView: View, Equatable {
     var body: some View {
         VStack(spacing: 20 * scale) {
             TimeSliderView(scale: scale)
-                .padding(.horizontal)
+                .frame(width: controlWidth > 0 ? controlWidth : nil)
 
             ControlSectionView(scale: scale, availableWidth: availableWidth)
+                .background(
+                    GeometryReader { geometry in
+                        Color.clear.preference(key: ControlWidthPreferenceKey.self, value: geometry.size.width)
+                    }
+                )
         }
+        .onPreferenceChange(ControlWidthPreferenceKey.self) { width in
+            controlWidth = width
+        }
+    }
+}
+
+// MARK: - Preference Key
+struct ControlWidthPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
     }
 }
