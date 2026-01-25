@@ -22,7 +22,7 @@ struct LayoutConfig: Equatable {
     /// Standard iPhone Configuration
     static let standard = LayoutConfig(
         contentMargin: 20,
-        landscapeSideMargin: 56, // Aggressive margin to clear notch/island
+        landscapeSideMargin: 48, // Adjusted to maximize space while keeping safe clearings
         artScaleFactor: 0.7,
         controlSpacing: 20,
         splitViewRatio: 0.45
