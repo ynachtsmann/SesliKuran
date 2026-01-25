@@ -159,7 +159,7 @@ struct InnerContentView: View, Equatable {
                             TrackInfoView(scale: landscapeControlScale)
 
                             // Unified Player Controls (Slider + Buttons)
-                            PlayerControlsView(scale: landscapeControlScale, availableWidth: rightPaneWidth)
+                            PlayerControlsView(scale: landscapeControlScale, availableWidth: rightPaneWidth, isLandscape: true)
                                 .equatable() // Optimization
 
                             Spacer()
@@ -187,7 +187,7 @@ struct InnerContentView: View, Equatable {
                     TrackInfoView(scale: scale)
 
                     // Unified Player Controls (Slider + Buttons)
-                    PlayerControlsView(scale: scale, availableWidth: geometrySize.width)
+                    PlayerControlsView(scale: scale, availableWidth: geometrySize.width, isLandscape: false)
                         .equatable() // Optimization
 
                     Spacer()
