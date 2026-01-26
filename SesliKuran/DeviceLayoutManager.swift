@@ -21,7 +21,7 @@ struct LayoutConfig: Equatable {
 
     /// Standard iPhone Configuration
     static let standard = LayoutConfig(
-        contentMargin: 20,
+        contentMargin: 30,
         landscapeSideMargin: 48, // Adjusted to maximize space while keeping safe clearings
         artScaleFactor: 0.7,
         controlSpacing: 20,
@@ -98,7 +98,7 @@ final class DeviceLayoutManager {
         let safeTop = safeArea.top > 0 ? safeArea.top : (isLandscape ? 20 : 47)
         let safeBottom = safeArea.bottom > 0 ? safeArea.bottom : 20
 
-        let finalTop = safeTop + 10 // Add a little breathing room
+        let finalTop = safeTop + 20 // Add a little breathing room
         let finalBottom = safeBottom + 10
 
         return EdgeInsets(

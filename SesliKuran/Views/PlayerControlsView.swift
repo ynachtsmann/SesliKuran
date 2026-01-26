@@ -28,6 +28,7 @@ struct PlayerControlsView: View, Equatable {
                 .padding(.horizontal, 40 * scale)
 
             ControlSectionView(scale: scale, availableWidth: availableWidth)
+                .padding(.horizontal, 40 * scale)
         }
         // Force the entire container to respect the available width
         .frame(width: availableWidth)
