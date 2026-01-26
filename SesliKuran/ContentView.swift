@@ -151,7 +151,8 @@ struct InnerContentView: View, Equatable {
 
                         // Context-Aware Scaling for Controls
                         // In landscape, height is the constraint. Adjust scale if needed.
-                        let landscapeControlScale = min(scale, innerGeo.size.height / 400.0)
+                        // Relaxed constraint (340.0) and allowed slight boost (scale * 1.1) to fill taller container.
+                        let landscapeControlScale = min(scale * 1.1, innerGeo.size.height / 340.0)
 
                         VStack(spacing: (config.controlSpacing * 0.8) * landscapeControlScale) {
                             Spacer()

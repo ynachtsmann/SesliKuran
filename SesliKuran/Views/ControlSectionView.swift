@@ -61,8 +61,9 @@ struct ControlSectionView: View {
             }
             .accessibilityLabel("Nächste Surah")
         }
-        .padding(.vertical, 20 * scale)
-        .padding(.horizontal, 40 * scale)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 28 * scale)
+        .padding(.horizontal, 10 * scale)
         .background(
             Capsule()
                 .fill(themeManager.isDarkMode ? Color.white.opacity(0.05) : Color.white.opacity(0.5))
