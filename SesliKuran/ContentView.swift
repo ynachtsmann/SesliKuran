@@ -199,6 +199,8 @@ struct InnerContentView: View, Equatable {
             // Placed in ZStack to stay pinned to top, independent of content layout
             HeaderView(showSlotSelection: $showSlotSelection, scale: scale)
                 .frame(maxWidth: .infinity)
+                // FIX: Add extra safety margin in Portrait to prevent icons from sticking to the edges
+                .padding(.horizontal, isLandscape ? 0 : 20)
         }
         .padding(containerPadding)
     }
