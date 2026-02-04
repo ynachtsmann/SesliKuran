@@ -133,10 +133,14 @@ struct SplashScreen: View {
         // Step 5: Finish & Dismiss (T = 4.0s minimum, or when ready)
         Task {
             // Ensure minimum display time AND data preparation
-            async let minTime = Task.sleep(nanoseconds: 3_800 * 1_000_000) // ~3.8s total
-            async let preparation = audioManager.prepare()
-
-            _ = try? await (minTime, preparation)
+            await withTaskGroup(of: Void.self) { group in
+                group.addTask {
+                    try? await Task.sleep(nanoseconds: 3_800 * 1_000_000) // ~3.8s total
+                }
+                group.addTask {
+                    await audioManager.prepare()
+                }
+            }
 
             await MainActor.run {
                 withAnimation(.easeOut(duration: 0.8)) {
