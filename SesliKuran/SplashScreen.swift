@@ -13,9 +13,9 @@ struct SplashScreen: View {
     @State private var particlesActive = false
     @State private var particlesConverged = false
 
-    // Phase 2: Book Entry (Fly-In)
+    // Phase 2: Book Entry (Scale-In)
     @State private var bookScale: CGFloat = 0.0
-    @State private var bookOffsetY: CGFloat = 200.0
+    // Removed bookOffsetY for center-pop effect
     @State private var bookRotationY: Double = -180.0 // Spin in
     @State private var bookOpacity: Double = 0.0
 
@@ -72,7 +72,7 @@ struct SplashScreen: View {
                             perspective: 0.6
                         )
                         .scaleEffect(bookScale)
-                        .offset(y: bookOffsetY)
+                        // Removed .offset(y: bookOffsetY) to keep it centered
                         .opacity(bookOpacity)
                         // Dynamic Shadow
                         .shadow(
@@ -118,11 +118,11 @@ struct SplashScreen: View {
             }
 
             // Book Enters with Physics-based Spring
-            // Grows, Moves Up, and Unspins simultaneously
+            // Grows and Unspins simultaneously (Center Pop)
             withAnimation(.spring(response: 0.7, dampingFraction: 0.6, blendDuration: 0)) {
                 bookOpacity = 1.0
                 bookScale = 1.0
-                bookOffsetY = 0
+                // bookOffsetY removed
                 bookRotationY = 0 // Spin from -180 to 0
             }
         }
