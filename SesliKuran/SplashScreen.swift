@@ -15,17 +15,16 @@ struct SplashScreen: View {
 
     // Phase 2: Book Entry (Scale-In)
     @State private var bookScale: CGFloat = 0.0
-    // Removed bookOffsetY for center-pop effect
-    @State private var bookRotationY: Double = -180.0 // Spin in
     @State private var bookOpacity: Double = 0.0
 
     // Phase 3: Impact (Shockwave)
     @State private var shockwaveScale: CGFloat = 0.5
     @State private var shockwaveOpacity: Double = 0.0
 
-    // Phase 4: Page Turn
-    @State private var isBookOpen = false
-    @State private var bookFlipAngle: Double = 0.0 // For the opening flip
+    // Phase 4: Floating/Breathing (2.5D Life)
+    @State private var bookFloatingY: CGFloat = 0.0
+    @State private var bookFloatingRotationY: Double = 0.0
+    @State private var bookBreathingScale: CGFloat = 1.0
 
     // Phase 5: Text Reveal
     @State private var showText = false
@@ -51,49 +50,49 @@ struct SplashScreen: View {
                         .scaleEffect(shockwaveScale)
                         .opacity(shockwaveOpacity)
 
-                    // "Holy Glow"
+                    // "Holy Glow" (Background Light)
                     Circle()
                         .fill(ThemeColors.primaryColor(isDarkMode: themeManager.isDarkMode))
-                        .frame(width: 120, height: 120)
-                        .blur(radius: 50)
-                        .opacity(bookOpacity * 0.4)
+                        .frame(width: 140, height: 140)
+                        .blur(radius: 60)
+                        .opacity(bookOpacity * 0.5) // Slightly stronger glow
 
-                    // The Book
-                    Image(systemName: isBookOpen ? "book.fill" : "book.closed.fill")
+                    // The Book (Always Open)
+                    Image(systemName: "book.fill") // Open Book
                         .resizable()
                         .scaledToFit()
-                        .frame(width: 90, height: 90)
+                        .frame(width: 100, height: 100) // Slightly larger for impact
                         .foregroundStyle(ThemeColors.primaryColor(isDarkMode: themeManager.isDarkMode))
-                        // Combined 3D Effects: Fly-In Spin + Page Turn Flip
+                        // 3D Floating Effect
                         .rotation3DEffect(
-                            .degrees(bookRotationY + bookFlipAngle),
+                            .degrees(bookFloatingRotationY),
                             axis: (x: 0.0, y: 1.0, z: 0.0),
                             anchor: .center,
                             perspective: 0.6
                         )
-                        .scaleEffect(bookScale)
-                        // Removed .offset(y: bookOffsetY) to keep it centered
+                        .scaleEffect(bookScale * bookBreathingScale)
+                        .offset(y: bookFloatingY)
                         .opacity(bookOpacity)
                         // Dynamic Shadow
                         .shadow(
                             color: ThemeColors.primaryColor(isDarkMode: themeManager.isDarkMode).opacity(0.6),
-                            radius: 15, x: 0, y: 10
+                            radius: 20, x: 0, y: 15
                         )
                 }
-                .frame(height: 140) // Fixed height container
+                .frame(height: 150) // Fixed container height
 
                 // Staggered Text (Letters fly up)
                 if showText {
                     HStack(spacing: 0) {
-                        StaggeredLetters(text: "SESLI", delayOffset: 0.0, isDarkMode: themeManager.isDarkMode)
+                        StaggeredLetters(text: "DER", delayOffset: 0.0, isDarkMode: themeManager.isDarkMode)
                         Text(" ") // Space
                             .font(.system(.title2, design: .serif))
-                            .frame(width: 10)
-                        StaggeredLetters(text: "KURAN", delayOffset: 0.4, isDarkMode: themeManager.isDarkMode)
+                            .frame(width: 12)
+                        StaggeredLetters(text: "KURAN", delayOffset: 0.3, isDarkMode: themeManager.isDarkMode)
                     }
                 } else {
                     // Invisible placeholder to prevent layout shifts
-                    Text("SESLI KURAN")
+                    Text("DER KURAN")
                         .font(.system(.title2, design: .serif).smallCaps())
                         .opacity(0)
                 }
@@ -110,7 +109,6 @@ struct SplashScreen: View {
         particlesActive = true
 
         // Step 2: Book Fly-In (T = 0.8s)
-        // We delay slightly to let particles form/implode a bit
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
             // Hide particles as book arrives
             withAnimation(.easeOut(duration: 0.3)) {
@@ -118,12 +116,9 @@ struct SplashScreen: View {
             }
 
             // Book Enters with Physics-based Spring
-            // Grows and Unspins simultaneously (Center Pop)
             withAnimation(.spring(response: 0.7, dampingFraction: 0.6, blendDuration: 0)) {
                 bookOpacity = 1.0
                 bookScale = 1.0
-                // bookOffsetY removed
-                bookRotationY = 0 // Spin from -180 to 0
             }
         }
 
@@ -135,35 +130,19 @@ struct SplashScreen: View {
                 shockwaveScale = 2.5
                 shockwaveOpacity = 0.0
             }
+
+            // Start Floating/Breathing Animation (Life)
+            startFloatingAnimation()
         }
 
-        // Step 4: Page Turn (T = 1.6s)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) {
-            // First Half: Rotate "closed" book to 90 degrees
-            withAnimation(.easeInOut(duration: 0.3)) {
-                bookFlipAngle = 90
-            }
-
-            // Second Half: Swap to "Open" icon and rotate back
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                isBookOpen = true
-                bookFlipAngle = -90 // Start from other side (invisible edge)
-
-                withAnimation(.spring(response: 0.6, dampingFraction: 0.7)) {
-                    bookFlipAngle = 0 // Settle at 0 (Face forward)
-                }
-            }
-        }
-
-        // Step 5: Text Reveal (T = 2.2s)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.2) {
+        // Step 4: Text Reveal (T = 1.8s)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.8) {
             showText = true
         }
 
-        // Step 6: Finish & Dismiss (T = 4.0s minimum)
+        // Step 5: Finish & Dismiss (T = 4.0s minimum)
         Task {
             // Ensure minimum display time AND data preparation
-            // Using withTaskGroup to avoid 'void' assignment compiler errors
             await withTaskGroup(of: Void.self) { group in
                 group.addTask {
                     try? await Task.sleep(nanoseconds: 3_800 * 1_000_000) // ~3.8s total
@@ -178,6 +157,23 @@ struct SplashScreen: View {
                     isAppReady = true
                 }
             }
+        }
+    }
+
+    private func startFloatingAnimation() {
+        // Continuous gentle rotation (Y-axis) - "Looking around"
+        withAnimation(.easeInOut(duration: 4.0).repeatForever(autoreverses: true)) {
+            bookFloatingRotationY = 15.0 // Rotate 15 degrees right
+        }
+
+        // Gentle vertical float - "Levitating"
+        withAnimation(.easeInOut(duration: 2.5).repeatForever(autoreverses: true)) {
+            bookFloatingY = -10.0 // Float up slightly
+        }
+
+        // Subtle breathing scale - "Alive"
+        withAnimation(.easeInOut(duration: 3.0).repeatForever(autoreverses: true)) {
+            bookBreathingScale = 1.05 // Grow slightly
         }
     }
 }
