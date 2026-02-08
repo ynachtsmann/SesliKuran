@@ -1,13 +1,13 @@
 //
-//  SesliKuranUITests.swift
-//  SesliKuranUITests
+//  Der_KuranUITests.swift
+//  Der_KuranUITests
 //
 //  Created by Ünal Önder on 21.12.24.
 //
 
 import XCTest
 
-final class SesliKuranUITests: XCTestCase {
+final class Der_KuranUITests: XCTestCase {
 
     override func setUpWithError() throws {
         // Put setup code here. This method is called before the invocation of each test method in the class.

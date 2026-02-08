@@ -1,12 +1,12 @@
 //
 //  AudioManagerTests.swift
-//  SesliKuranTests
+//  Der_KuranTests
 //
 //  Created by Jules on 2024-05-23.
 //
 
 import XCTest
-@testable import SesliKuran
+@testable import Der_Kuran
 
 @MainActor
 class AudioManagerTests: XCTestCase {
