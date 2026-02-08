@@ -1,5 +1,5 @@
 import XCTest
-@testable import SesliKuran
+@testable import Der_Kuran
 
 // MARK: - Mission Critical Verification
 // This file serves as a logical verification suite for the hardening changes.

@@ -1,13 +1,13 @@
 //
-//  SesliKuranUITestsLaunchTests.swift
-//  SesliKuranUITests
+//  Der_KuranUITestsLaunchTests.swift
+//  Der_KuranUITests
 //
 //  Created by Ünal Önder on 21.12.24.
 //
 
 import XCTest
 
-final class SesliKuranUITestsLaunchTests: XCTestCase {
+final class Der_KuranUITestsLaunchTests: XCTestCase {
 
     override class var runsForEachTargetApplicationUIConfiguration: Bool {
         true

@@ -15,50 +15,50 @@
 			containerPortal = 51A07F632D1710190006B673 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = 51A07F6A2D1710190006B673;
-			remoteInfo = SesliKuran;
+			remoteInfo = Der_Kuran;
 		};
 		51A07F862D1710190006B673 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 51A07F632D1710190006B673 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = 51A07F6A2D1710190006B673;
-			remoteInfo = SesliKuran;
+			remoteInfo = Der_Kuran;
 		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		51A07F6B2D1710190006B673 /* SesliKuran.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SesliKuran.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		51A07F7B2D1710190006B673 /* SesliKuranTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SesliKuranTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		51A07F852D1710190006B673 /* SesliKuranUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SesliKuranUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		51A07F6B2D1710190006B673 /* Der_Kuran.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Der_Kuran.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		51A07F7B2D1710190006B673 /* Der_KuranTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = Der_KuranTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		51A07F852D1710190006B673 /* Der_KuranUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = Der_KuranUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		51C7542E2D18CCCF00180ECA /* Exceptions for "SesliKuran" folder in "SesliKuran" target */ = {
+		51C7542E2D18CCCF00180ECA /* Exceptions for "Der_Kuran" folder in "Der_Kuran" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
 			);
-			target = 51A07F6A2D1710190006B673 /* SesliKuran */;
+			target = 51A07F6A2D1710190006B673 /* Der_Kuran */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		51A07F6D2D1710190006B673 /* SesliKuran */ = {
+		51A07F6D2D1710190006B673 /* Der_Kuran */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				51C7542E2D18CCCF00180ECA /* Exceptions for "SesliKuran" folder in "SesliKuran" target */,
+				51C7542E2D18CCCF00180ECA /* Exceptions for "Der_Kuran" folder in "Der_Kuran" target */,
 			);
-			path = SesliKuran;
+			path = Der_Kuran;
 			sourceTree = "<group>";
 		};
-		51A07F7E2D1710190006B673 /* SesliKuranTests */ = {
+		51A07F7E2D1710190006B673 /* Der_KuranTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = SesliKuranTests;
+			path = Der_KuranTests;
 			sourceTree = "<group>";
 		};
-		51A07F882D1710190006B673 /* SesliKuranUITests */ = {
+		51A07F882D1710190006B673 /* Der_KuranUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = SesliKuranUITests;
+			path = Der_KuranUITests;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -91,9 +91,9 @@
 		51A07F622D1710190006B673 = {
 			isa = PBXGroup;
 			children = (
-				51A07F6D2D1710190006B673 /* SesliKuran */,
-				51A07F7E2D1710190006B673 /* SesliKuranTests */,
-				51A07F882D1710190006B673 /* SesliKuranUITests */,
+				51A07F6D2D1710190006B673 /* Der_Kuran */,
+				51A07F7E2D1710190006B673 /* Der_KuranTests */,
+				51A07F882D1710190006B673 /* Der_KuranUITests */,
 				51A07F6C2D1710190006B673 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -101,9 +101,9 @@
 		51A07F6C2D1710190006B673 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				51A07F6B2D1710190006B673 /* SesliKuran.app */,
-				51A07F7B2D1710190006B673 /* SesliKuranTests.xctest */,
-				51A07F852D1710190006B673 /* SesliKuranUITests.xctest */,
+				51A07F6B2D1710190006B673 /* Der_Kuran.app */,
+				51A07F7B2D1710190006B673 /* Der_KuranTests.xctest */,
+				51A07F852D1710190006B673 /* Der_KuranUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -111,9 +111,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		51A07F6A2D1710190006B673 /* SesliKuran */ = {
+		51A07F6A2D1710190006B673 /* Der_Kuran */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 51A07F8F2D1710190006B673 /* Build configuration list for PBXNativeTarget "SesliKuran" */;
+			buildConfigurationList = 51A07F8F2D1710190006B673 /* Build configuration list for PBXNativeTarget "Der_Kuran" */;
 			buildPhases = (
 				51A07F672D1710190006B673 /* Sources */,
 				51A07F682D1710190006B673 /* Frameworks */,
@@ -124,18 +124,18 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				51A07F6D2D1710190006B673 /* SesliKuran */,
+				51A07F6D2D1710190006B673 /* Der_Kuran */,
 			);
-			name = SesliKuran;
+			name = Der_Kuran;
 			packageProductDependencies = (
 			);
-			productName = SesliKuran;
-			productReference = 51A07F6B2D1710190006B673 /* SesliKuran.app */;
+			productName = Der_Kuran;
+			productReference = 51A07F6B2D1710190006B673 /* Der_Kuran.app */;
 			productType = "com.apple.product-type.application";
 		};
-		51A07F7A2D1710190006B673 /* SesliKuranTests */ = {
+		51A07F7A2D1710190006B673 /* Der_KuranTests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 51A07F922D1710190006B673 /* Build configuration list for PBXNativeTarget "SesliKuranTests" */;
+			buildConfigurationList = 51A07F922D1710190006B673 /* Build configuration list for PBXNativeTarget "Der_KuranTests" */;
 			buildPhases = (
 				51A07F772D1710190006B673 /* Sources */,
 				51A07F782D1710190006B673 /* Frameworks */,
@@ -147,18 +147,18 @@
 				51A07F7D2D1710190006B673 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
-				51A07F7E2D1710190006B673 /* SesliKuranTests */,
+				51A07F7E2D1710190006B673 /* Der_KuranTests */,
 			);
-			name = SesliKuranTests;
+			name = Der_KuranTests;
 			packageProductDependencies = (
 			);
-			productName = SesliKuranTests;
-			productReference = 51A07F7B2D1710190006B673 /* SesliKuranTests.xctest */;
+			productName = Der_KuranTests;
+			productReference = 51A07F7B2D1710190006B673 /* Der_KuranTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
-		51A07F842D1710190006B673 /* SesliKuranUITests */ = {
+		51A07F842D1710190006B673 /* Der_KuranUITests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 51A07F952D1710190006B673 /* Build configuration list for PBXNativeTarget "SesliKuranUITests" */;
+			buildConfigurationList = 51A07F952D1710190006B673 /* Build configuration list for PBXNativeTarget "Der_KuranUITests" */;
 			buildPhases = (
 				51A07F812D1710190006B673 /* Sources */,
 				51A07F822D1710190006B673 /* Frameworks */,
@@ -170,13 +170,13 @@
 				51A07F872D1710190006B673 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
-				51A07F882D1710190006B673 /* SesliKuranUITests */,
+				51A07F882D1710190006B673 /* Der_KuranUITests */,
 			);
-			name = SesliKuranUITests;
+			name = Der_KuranUITests;
 			packageProductDependencies = (
 			);
-			productName = SesliKuranUITests;
-			productReference = 51A07F852D1710190006B673 /* SesliKuranUITests.xctest */;
+			productName = Der_KuranUITests;
+			productReference = 51A07F852D1710190006B673 /* Der_KuranUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
 /* End PBXNativeTarget section */
@@ -202,7 +202,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 51A07F662D1710190006B673 /* Build configuration list for PBXProject "SesliKuran" */;
+			buildConfigurationList = 51A07F662D1710190006B673 /* Build configuration list for PBXProject "Der_Kuran" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -216,9 +216,9 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				51A07F6A2D1710190006B673 /* SesliKuran */,
-				51A07F7A2D1710190006B673 /* SesliKuranTests */,
-				51A07F842D1710190006B673 /* SesliKuranUITests */,
+				51A07F6A2D1710190006B673 /* Der_Kuran */,
+				51A07F7A2D1710190006B673 /* Der_KuranTests */,
+				51A07F842D1710190006B673 /* Der_KuranUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -274,12 +274,12 @@
 /* Begin PBXTargetDependency section */
 		51A07F7D2D1710190006B673 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 51A07F6A2D1710190006B673 /* SesliKuran */;
+			target = 51A07F6A2D1710190006B673 /* Der_Kuran */;
 			targetProxy = 51A07F7C2D1710190006B673 /* PBXContainerItemProxy */;
 		};
 		51A07F872D1710190006B673 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 51A07F6A2D1710190006B673 /* SesliKuran */;
+			target = 51A07F6A2D1710190006B673 /* Der_Kuran */;
 			targetProxy = 51A07F862D1710190006B673 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
@@ -411,11 +411,11 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_ASSET_PATHS = "\"SesliKuran/Preview Content\"";
+				DEVELOPMENT_ASSET_PATHS = "\"Der_Kuran/Preview Content\"";
 				DEVELOPMENT_TEAM = 6B97D9AB2Y;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = SesliKuran/Info.plist;
+				INFOPLIST_FILE = Der_Kuran/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -427,7 +427,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = mp3.SesliKuran;
+				PRODUCT_BUNDLE_IDENTIFIER = mp3.Der_Kuran;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -442,11 +442,11 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_ASSET_PATHS = "\"SesliKuran/Preview Content\"";
+				DEVELOPMENT_ASSET_PATHS = "\"Der_Kuran/Preview Content\"";
 				DEVELOPMENT_TEAM = 6B97D9AB2Y;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = SesliKuran/Info.plist;
+				INFOPLIST_FILE = Der_Kuran/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -458,7 +458,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = mp3.SesliKuran;
+				PRODUCT_BUNDLE_IDENTIFIER = mp3.Der_Kuran;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -476,12 +476,12 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = mp3.SesliKuranTests;
+				PRODUCT_BUNDLE_IDENTIFIER = mp3.Der_KuranTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/SesliKuran.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/SesliKuran";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Der_Kuran.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Der_Kuran";
 			};
 			name = Debug;
 		};
@@ -495,12 +495,12 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = mp3.SesliKuranTests;
+				PRODUCT_BUNDLE_IDENTIFIER = mp3.Der_KuranTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/SesliKuran.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/SesliKuran";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Der_Kuran.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Der_Kuran";
 			};
 			name = Release;
 		};
@@ -512,12 +512,12 @@
 				DEVELOPMENT_TEAM = 6B97D9AB2Y;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = mp3.SesliKuranUITests;
+				PRODUCT_BUNDLE_IDENTIFIER = mp3.Der_KuranUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_TARGET_NAME = SesliKuran;
+				TEST_TARGET_NAME = Der_Kuran;
 			};
 			name = Debug;
 		};
@@ -529,19 +529,19 @@
 				DEVELOPMENT_TEAM = 6B97D9AB2Y;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = mp3.SesliKuranUITests;
+				PRODUCT_BUNDLE_IDENTIFIER = mp3.Der_KuranUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_TARGET_NAME = SesliKuran;
+				TEST_TARGET_NAME = Der_Kuran;
 			};
 			name = Release;
 		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		51A07F662D1710190006B673 /* Build configuration list for PBXProject "SesliKuran" */ = {
+		51A07F662D1710190006B673 /* Build configuration list for PBXProject "Der_Kuran" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				51A07F8D2D1710190006B673 /* Debug */,
@@ -550,7 +550,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		51A07F8F2D1710190006B673 /* Build configuration list for PBXNativeTarget "SesliKuran" */ = {
+		51A07F8F2D1710190006B673 /* Build configuration list for PBXNativeTarget "Der_Kuran" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				51A07F902D1710190006B673 /* Debug */,
@@ -559,7 +559,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		51A07F922D1710190006B673 /* Build configuration list for PBXNativeTarget "SesliKuranTests" */ = {
+		51A07F922D1710190006B673 /* Build configuration list for PBXNativeTarget "Der_KuranTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				51A07F932D1710190006B673 /* Debug */,
@@ -568,7 +568,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		51A07F952D1710190006B673 /* Build configuration list for PBXNativeTarget "SesliKuranUITests" */ = {
+		51A07F952D1710190006B673 /* Build configuration list for PBXNativeTarget "Der_KuranUITests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				51A07F962D1710190006B673 /* Debug */,

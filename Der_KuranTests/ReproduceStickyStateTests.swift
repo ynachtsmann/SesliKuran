@@ -1,6 +1,6 @@
 
 import XCTest
-@testable import SesliKuran
+@testable import Der_Kuran
 
 @MainActor
 class ReproduceStickyStateTests: XCTestCase {
